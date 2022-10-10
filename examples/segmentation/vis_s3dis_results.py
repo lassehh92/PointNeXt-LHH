@@ -33,5 +33,5 @@ input_points = input_points[valid_idx]
 gt_points, gt_colors =read_obj(osp.join(methods_dir[0], prefix_names[1]+str(idx)+'.obj'))
 method1_points, method1_colors =read_obj(osp.join(methods_dir[0], prefix_names[2]+str(idx)+'.obj'))
 #method2_points, method2_colors =read_obj(osp.join(methods_dir[1], prefix_names[2]+str(idx)+'.obj'))
-vis_multi_points([input_points, input_points, input_points, input_points], [input_colors[valid_idx],  method1_colors[valid_idx], method2_colors[valid_idx], gt_colors[valid_idx]])
-#vis_single_pointCloud()
+#vis_multi_points([input_points, input_points, input_points, input_points], [input_colors[valid_idx],  method1_colors[valid_idx], method2_colors[valid_idx], gt_colors[valid_idx]])
+vis_points([input_points, input_points, input_points, input_points,], [input_colors[valid_idx],  method1_colors[valid_idx], gt_colors[valid_idx]])
