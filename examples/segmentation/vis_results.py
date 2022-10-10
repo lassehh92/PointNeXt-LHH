@@ -67,12 +67,12 @@ def read_obj(filename):
 
 # --------------------------------
 # 1,4,5,40 
-idx = 40
-data_dir = '/Users/qiang/Downloads/visualization2/'
-dataset_name = 's3dis_sphere'
+idx = 2
+data_dir = '/home/lasse/Git/PointNeXt/log/s3dis/s3dis-train-pointnext-xl-ngpus1-seed1045-20221008-170028-9LKswMZCFEnShmwcCgsFdY_ckpt_best.pth_20221008-233159-CiCAoPyMoVReUYhFcoHAM4/visualization'
+dataset_name = 's3dis-Area5'
 # --------------------------------
 
-method_names = ['scratch', 'pred']
+method_names = ['pred']
 file_list = [os.path.join(data_dir, f'input-{dataset_name}-{idx}.obj')]
 for method_name in method_names:
     file_list.append(os.path.join(data_dir, f'{method_name}-{dataset_name}-{idx}.obj'))
