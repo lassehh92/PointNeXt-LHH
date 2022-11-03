@@ -10,36 +10,19 @@ from ..build import DATASETS
 
 
 @DATASETS.register_module()
-class S3DIS(Dataset):
-    classes = ['ceiling',
-               'floor',
-               'wall',
-               'beam',
-               'column',
-               'window',
-               'door',
-               'chair',
-               'table',
-               'bookcase',
-               'sofa',
-               'board',
-               'clutter']
-    num_classes = 13
+class Novafos3D(Dataset):
+    classes = ['terrain',
+               'excavation',
+               'pipe',
+               'noise']
+    num_classes = 4
     num_per_class = np.array([3370714, 2856755, 4919229, 318158, 375640, 478001, 974733,
                               650464, 791496, 88727, 1284130, 229758, 2272837], dtype=np.int32)
-    class2color = {'ceiling':     [0, 255, 0],
-                   'floor':       [0, 0, 255],
-                   'wall':        [0, 255, 255],
-                   'beam':        [255, 255, 0],
-                   'column':      [255, 0, 255],
-                   'window':      [100, 100, 255],
-                   'door':        [200, 200, 100],
-                   'table':       [170, 120, 200],
-                   'chair':       [255, 0, 0],
-                   'sofa':        [200, 100, 100],
-                   'bookcase':    [10, 200, 100],
-                   'board':       [200, 200, 200],
-                   'clutter':     [50, 50, 50]}
+    class2color = {'terrain':     [0, 255, 0],
+                   'excavation':  [0, 0, 255],
+                   'pipe':        [255, 0, 0],
+                   'noise':       [255, 0, 255]}
+
     cmap = [*class2color.values()]
     gravity_dim = 1 
     """S3DIS dataset, loading the subsampled entire room as input without block/sphere subsampling.

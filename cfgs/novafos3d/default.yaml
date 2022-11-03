@@ -1,13 +1,13 @@
 # data augmentation
 dataset:
   common:
-    NAME: S3DIS
-    data_root: data/S3DIS/stanford_indoor3d
+    NAME: Novafos-3D
+    data_root: data/Novafos-3D/split_v1
     test_area: 5
-    voxel_size: 0.04
+    voxel_size: 0.015 # 0.04 is to much. Start try with 0.01 0.015 0.02
   train:
     split: train
-    voxel_max: 24000
+    voxel_max: 24000 # I suspect 24000 may be to low ... 
     loop: 30  # here, the training has been looped 30 times. therefore, the training epochs do not need much.
     presample: False
   val:
@@ -20,7 +20,7 @@ dataset:
     presample: False 
 
 feature_keys: x,heights
-num_classes: 13
+num_classes: 4
 batch_size: 2
 val_batch_size: 1
 
@@ -44,7 +44,7 @@ datatransforms:
 # ---------------------------------------------------------------------------- #
 val_fn: validate
 ignore_index: null 
-epochs: 2
+epochs: 5
 
 cls_weighed_loss: False
 
@@ -68,9 +68,9 @@ use_voting: False
 # ---------------------------------------------------------------------------- #
 # io and misc
 # ---------------------------------------------------------------------------- #
-log_dir: 's3dis'
+log_dir: 'novafos3d'
 save_freq: -1 # save epoch every xxx epochs, -1 only save last and best. 
 val_freq: 1
 
 wandb:
-  project: PointNeXt-S3DIS
+  project: PointNeXt-Novafos-3D
