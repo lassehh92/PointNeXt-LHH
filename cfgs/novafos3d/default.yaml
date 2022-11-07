@@ -1,8 +1,8 @@
 # data augmentation
 dataset:
   common:
-    NAME: Novafos-3D
-    data_root: data/Novafos-3D/novafos3dtest
+    NAME: Novafos3D
+    data_root: data/Novafos3D/novafos3dtest
     test_area: 5
     voxel_size: 0.015 # 0.04 is to much. Start try with 0.01 0.015 0.02
   train:
@@ -73,4 +73,4 @@ save_freq: -1 # save epoch every xxx epochs, -1 only save last and best.
 val_freq: 1
 
 wandb:
-  project: PointNeXt-Novafos-3D
+  project: PointNeXt-Novafos3D
