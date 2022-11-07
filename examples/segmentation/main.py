@@ -48,6 +48,11 @@ def generate_data_list(cfg):
         data_list = sorted(os.listdir(raw_root))
         data_list = [os.path.join(raw_root, item) for item in data_list if
                      'Area_{}'.format(cfg.dataset.common.test_area) in item]
+    elif 'novafos3d' in cfg.dataset.common.NAME.lower():
+        raw_root = os.path.join(cfg.dataset.common.data_root, 'raw')
+        data_list = sorted(os.listdir(raw_root))
+        data_list = [os.path.join(raw_root, item) for item in data_list if
+                     'Area_{}'.format(cfg.dataset.common.test_area) in item]
     elif 'scannet' in cfg.dataset.common.NAME.lower():
         data_list = glob.glob(os.path.join(cfg.dataset.common.data_root, cfg.dataset.test.split, "*.pth"))
     elif 'semantickitti' in cfg.dataset.common.NAME.lower():
@@ -65,6 +70,10 @@ def generate_data_list(cfg):
 def load_data(data_path, cfg):
     label, feat = None, None
     if 's3dis' in cfg.dataset.common.NAME.lower():
+        data = np.load(data_path)  # xyzrgbl, N*7
+        coord, feat, label = data[:, :3], data[:, 3:6], data[:, 6]
+        feat = np.clip(feat / 255., 0, 1).astype(np.float32)
+    elif 'novafos3d' in cfg.dataset.common.NAME.lower():
         data = np.load(data_path)  # xyzrgbl, N*7
         coord, feat, label = data[:, :3], data[:, 3:6], data[:, 6]
         feat = np.clip(feat / 255., 0, 1).astype(np.float32)
@@ -617,6 +626,8 @@ def test(model, data_list, cfg, num_votes=1):
             pred = cfg.cmap[pred, :]
             # output pred labels
             if 's3dis' in dataset_name:
+                file_name = f'{dataset_name}-Area{cfg.dataset.common.test_area}-{cloud_idx}'
+            elif 'novafos3d' in dataset_name:
                 file_name = f'{dataset_name}-Area{cfg.dataset.common.test_area}-{cloud_idx}'
             else:
                 file_name = f'{dataset_name}-{cloud_idx}'
