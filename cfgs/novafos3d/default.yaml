@@ -7,7 +7,7 @@ dataset:
     voxel_size: 0.015 # 0.04 is to much. Start try with 0.01 0.015 0.02
   train:
     split: train
-    voxel_max: 24000 # I suspect 24000 may be to low, but we go with it for now ... 
+    voxel_max: 30000 #24000 # I suspect 24000 may be to low, but we go with it for now ... 
     loop: 30  # here, the training has been looped 30 times. therefore, the training epochs do not need much.
     presample: False
   val:
@@ -44,7 +44,7 @@ datatransforms:
 # ---------------------------------------------------------------------------- #
 val_fn: validate
 ignore_index: null 
-epochs: 5
+epochs: 50
 
 cls_weighed_loss: False
 
