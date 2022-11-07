@@ -16,8 +16,7 @@ class Novafos3D(Dataset):
                'pipe',
                'noise']
     num_classes = 4
-    num_per_class = np.array([3370714, 2856755, 4919229, 318158, 375640, 478001, 974733,
-                              650464, 791496, 88727, 1284130, 229758, 2272837], dtype=np.int32)
+    num_per_class = np.array([3370714, 2856755, 4919229, 318158], dtype=np.int32)
     class2color = {'terrain':     [0, 255, 0],
                    'excavation':  [0, 0, 255],
                    'pipe':        [255, 0, 0],
@@ -39,9 +38,9 @@ class Novafos3D(Dataset):
         variable (bool, optional): where to use the original number of points. The number of point per point cloud is variable. Defaults to False.
     """
     def __init__(self,
-                 data_root: str = 'data/S3DIS/s3disfull',
+                 data_root: str = 'data/Novafos-3D/novafos3dtest',
                  test_area: int = 5,
-                 voxel_size: float = 0.04,
+                 voxel_size: float = 0.015,
                  voxel_max=None,
                  split: str = 'train',
                  transform=None,
@@ -71,11 +70,11 @@ class Novafos3D(Dataset):
 
         processed_root = os.path.join(data_root, 'processed')
         filename = os.path.join(
-            processed_root, f's3dis_{split}_area{test_area}_{voxel_size:.3f}_{str(voxel_max)}.pkl')
+            processed_root, f'novafos3d_{split}_area{test_area}_{voxel_size:.3f}_{str(voxel_max)}.pkl')
         if presample and not os.path.exists(filename):
             np.random.seed(0)
             self.data = []
-            for item in tqdm(self.data_list, desc=f'Loading S3DISFull {split} split on Test Area {test_area}'):
+            for item in tqdm(self.data_list, desc=f'Loading Novafos3D {split} split on Test Area {test_area}'):
                 data_path = os.path.join(raw_root, item + '.npy')
                 cdata = np.load(data_path).astype(np.float32)
                 cdata[:, :3] -= np.min(cdata[:, :3], 0)
