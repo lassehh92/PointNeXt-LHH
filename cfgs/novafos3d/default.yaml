@@ -20,7 +20,7 @@ dataset:
     presample: False 
 
 feature_keys: x,heights
-num_classes: 4
+num_classes: 5
 batch_size: 2
 val_batch_size: 1
 

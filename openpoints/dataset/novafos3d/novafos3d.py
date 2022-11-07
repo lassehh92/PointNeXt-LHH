@@ -11,13 +11,15 @@ from ..build import DATASETS
 
 @DATASETS.register_module()
 class Novafos3D(Dataset):
-    classes = ['terrain',
+    classes = ['clutter',
+               'terrain',
                'excavation',
                'pipe',
                'noise']
-    num_classes = 4
-    num_per_class = np.array([3370714, 2856755, 4919229, 318158], dtype=np.int32)
-    class2color = {'terrain':     [0, 255, 0],
+    num_classes = 5
+    num_per_class = np.array([2272837, 3370714, 2856755, 4919229, 318158], dtype=np.int32)
+    class2color = {'clutter':     [50, 50, 50],
+                   'terrain':     [0, 255, 0],
                    'excavation':  [0, 0, 255],
                    'pipe':        [255, 0, 0],
                    'noise':       [255, 0, 255]}
