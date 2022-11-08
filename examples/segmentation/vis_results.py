@@ -70,7 +70,7 @@ def read_obj(filename):
 idx = 3
 #data_dir = '/home/lasse/Git/PointNeXt/log/s3dis/s3dis-train-pointnext-xl-ngpus1-seed1045-20221008-170028-9LKswMZCFEnShmwcCgsFdY_ckpt_best.pth_20221008-233159-CiCAoPyMoVReUYhFcoHAM4/visualization'
 data_dir = '/Users/lhh/Downloads/visualization'
-dataset_name = 's3dis-Area5'
+dataset_name = 'novafos3d-Area5'
 # --------------------------------
 
 method_names = ['pred']
@@ -89,4 +89,8 @@ method2_points, method2_colors =read_obj(file_list[2])
 
 #vis_multi_points([input_points, input_points, input_points, input_points], [input_colors[valid_idx]/255.,  method1_colors[valid_idx], method2_colors[valid_idx], gt_colors[valid_idx]])
 
-vis_multi_points([input_points, input_points, input_points], [input_colors[valid_idx], method1_colors[valid_idx], gt_colors[valid_idx]])
+# 3 window veiw
+#vis_multi_points([input_points, input_points, input_points], [input_colors[valid_idx]/255., [method1_colors[valid_idx], gt_colors[valid_idx]]])
+
+# 2 window view 
+vis_multi_points([input_points, input_points], [method1_colors[valid_idx], gt_colors[valid_idx]])
