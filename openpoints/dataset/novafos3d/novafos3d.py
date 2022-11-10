@@ -11,18 +11,14 @@ from ..build import DATASETS
 
 @DATASETS.register_module()
 class Novafos3D(Dataset):
-    classes = ['clutter',
-               'terrain',
+    classes = ['terrain',
                'excavation',
-               'pipe',
-               'noise']
+               'pipe']
     num_classes = 5
-    num_per_class = np.array([2272837, 3370714, 2856755, 4919229, 318158], dtype=np.int32)
-    class2color = {'clutter':     [50, 50, 50],
-                   'terrain':     [0, 255, 0],
+    num_per_class = np.array([3370714, 2856755, 4919229], dtype=np.int32)
+    class2color = {'terrain':     [0, 255, 0],
                    'excavation':  [0, 0, 255],
-                   'pipe':        [255, 0, 0],
-                   'noise':       [255, 0, 255]}
+                   'pipe':        [255, 0, 0],}
 
     cmap = [*class2color.values()]
     gravity_dim = 1 
@@ -40,7 +36,7 @@ class Novafos3D(Dataset):
         variable (bool, optional): where to use the original number of points. The number of point per point cloud is variable. Defaults to False.
     """
     def __init__(self,
-                 data_root: str = 'data/Novafos-3D/novafos3dtest',
+                 data_root: str = 'data/Novafos-3D/novafos3d_3_classes',
                  test_area: int = 5,
                  voxel_size: float = 0.015,
                  voxel_max=None,
