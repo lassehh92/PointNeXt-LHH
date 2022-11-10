@@ -499,6 +499,8 @@ def validate_sphere(model, val_loader, cfg, num_votes=1, data_transform=None):
         # output pred labels
         if 's3dis' in dataset_name:
             file_name = f'{dataset_name}'
+        elif 'novafos3d' in dataset_name:
+            file_name = f'{dataset_name}'
         else:
             file_name = f'{dataset_name}'
 

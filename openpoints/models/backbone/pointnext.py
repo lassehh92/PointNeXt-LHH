@@ -162,6 +162,7 @@ class SetAbstraction(nn.Module):
                 new_p = torch.gather(p, 1, idx.unsqueeze(-1).expand(-1, -1, 3))
             else:
                 new_p = p
+            # for vising af voxel downsampling process..
             """ DEBUG neighbor numbers. 
             query_xyz, support_xyz = new_p, p
             radius = self.grouper.radius
