@@ -17,7 +17,7 @@
 dataset:
   common:
     NAME: Novafos3D
-    data_root: data/Novafos3D/novafos3d_3_classes
+    data_root: data/Novafos3D/novafos3d_3_classes_noise_del
     test_area: 5
     voxel_size: 0.015 # 0.04 is to much. Start try with 0.01 0.015 0.02
   train:

@@ -14,11 +14,11 @@ class Novafos3D(Dataset):
     classes = ['terrain',
                'excavation',
                'pipe']
-    num_classes = 5
+    num_classes = 3
     num_per_class = np.array([3370714, 2856755, 4919229], dtype=np.int32)
     class2color = {'terrain':     [0, 255, 0],
                    'excavation':  [0, 0, 255],
-                   'pipe':        [255, 0, 0],}
+                   'pipe':        [255, 0, 0]}
 
     cmap = [*class2color.values()]
     gravity_dim = 1 
