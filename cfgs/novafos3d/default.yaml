@@ -1,25 +1,10 @@
 # data augmentation
-
-# """S3DIS dataset, loading the subsampled entire room as input without block/sphere subsampling.
-#     number of points per room in average, median, and std: (794855.5, 1005913.0147058824, 939501.4733064277)
-#     Args:
-#         data_root (str, optional): Defaults to 'data/S3DIS/s3disfull'.
-#         test_area (int, optional): Defaults to 5.
-#         voxel_size (float, optional): the voxel size for donwampling. Defaults to 0.04.
-#         voxel_max (_type_, optional): subsample the max number of point per point cloud. Set None to use all points.  Defaults to None.
-#         split (str, optional): Defaults to 'train'.
-#         transform (_type_, optional): Defaults to None.
-#         loop (int, optional): split loops for each epoch. Defaults to 1.
-#         presample (bool, optional): wheter to downsample each point cloud before training. Set to False to downsample on-the-fly. Defaults to False.
-#         variable (bool, optional): where to use the original number of points. The number of point per point cloud is variable. Defaults to False.
-# """
-
 dataset:
   common:
     NAME: Novafos3D
-    data_root: data/Novafos3D/novafos3d_3_classes_noise_del
+    data_root: data/Novafos3D/14-4-split
     test_area: 5
-    voxel_size: 0.015 # 0.04 is to much. Start try with 0.01 0.015 0.02
+    voxel_size: 0.03 # 0.04 is to much. Start try with 0.01 0.015 0.02
   train:
     split: train
     voxel_max: 60000 #30000 #24000 # I suspect 24000 may be to low, but we go with it for now ... 

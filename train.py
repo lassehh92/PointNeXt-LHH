@@ -13,7 +13,7 @@ from examples.segmentation.main import main as segmentation_main
 if __name__ == '__main__':
 
     parser = argparse.ArgumentParser('Semantic segmentation training script')
-    parser.add_argument('--cfg', type=str, required=False, help='config file', default="cfgs/s3dis/pointnext-xl.yaml")
+    parser.add_argument('--cfg', type=str, required=False, help='config file', default="cfgs/novafos3d/pointnext-xl.yaml")
     parser.add_argument('--deterministic', type=int, help='Whether to run training deterministic', default=1)
 
     args, opts = parser.parse_known_args()

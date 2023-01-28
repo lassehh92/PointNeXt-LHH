@@ -3,23 +3,6 @@
 #  84.81    41.576
 # Throughput (ins./s): 46.06739325463371 
 
-# The Encoder for PointNext 
-#     Args:
-#         in_channels (int, optional): input channels . Defaults to 4.
-#         width (int, optional): width of network, the output mlp of the stem MLP. Defaults to 32.
-#         blocks (List[int], optional): # of blocks per stage (including the SA block). Defaults to [1, 4, 7, 4, 4].
-#         strides (List[int], optional): the downsampling ratio of each stage. Defaults to [4, 4, 4, 4].
-#         block (strorType[InvResMLP], optional): the block to use for depth scaling. Defaults to 'InvResMLP'.
-#         nsample (intorList[int], optional): the number of neighbors to query for each block. Defaults to 32.
-#         radius (floatorList[float], optional): the initial radius. Defaults to 0.1.
-#         aggr_args (_type_, optional): the args for local aggregataion. Defaults to {'feature_type': 'dp_fj', "reduction": 'max'}.
-#         group_args (_type_, optional): the args for grouping. Defaults to {'NAME': 'ballquery'}.
-#         norm_args (_type_, optional): the args for normalization layer. Defaults to {'norm': 'bn'}.
-#         act_args (_type_, optional): the args for activation layer. Defaults to {'act': 'relu'}.
-#         expansion (int, optional): the expansion ratio of the InvResMLP block. Defaults to 4.
-#         sa_layers (int, optional): the number of MLP layers to use in the SA block. Defaults to 1.
-#         sa_use_res (bool, optional): wheter to use residual connection in SA block. Set to True only for PointNeXt-S.
-
 model:
   NAME: BaseSeg
   encoder_args:
