@@ -75,11 +75,11 @@ def read_obj(filename):
 
 # --------------------------------
 # 1,4,5,40 
-idx = 3
+idx = 1
 #data_dir = '/home/lasse/Git/PointNeXt/log/s3dis/s3dis-train-pointnext-xl-ngpus1-seed1045-20221008-170028-9LKswMZCFEnShmwcCgsFdY_ckpt_best.pth_20221008-233159-CiCAoPyMoVReUYhFcoHAM4/visualization'
 #data_dir = '/Users/lhh/Downloads/visualization_s3dis'
 #dataset_name = 's3dis-Area5'
-data_dir = '/Users/lhh/Downloads/visualization'
+data_dir = '/Volumes/LHH-WD-1TB/data/Novafos-3D/40-10-split/PointNeXt_results/visualization_50'
 dataset_name = 'novafos3d-Area5'
 # --------------------------------
 

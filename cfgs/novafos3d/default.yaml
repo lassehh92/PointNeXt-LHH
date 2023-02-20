@@ -7,7 +7,7 @@ dataset:
     voxel_size: 0.03 # 0.04 is to much. Start try with 0.01 0.015 0.02
   train:
     split: train
-    voxel_max: 60000 #30000 #24000 # I suspect 24000 may be to low, but we go with it for now ... 
+    voxel_max: 30000 #30000 #24000 # I suspect 24000 may be to low, but we go with it for now ... 
     loop: 30  # here, the training has been looped 30 times. therefore, the training epochs do not need much.
     presample: False
   val:
@@ -46,7 +46,7 @@ val_fn: validate
 ignore_index: null 
 epochs: 50
 
-cls_weighed_loss: False
+cls_weighed_loss: False #before true, calcualte overall points pr class and set in novafos3d.py 
 
 criterion_args:
   NAME: CrossEntropy

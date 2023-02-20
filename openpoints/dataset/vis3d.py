@@ -154,3 +154,11 @@ def write_obj(points, colors, out_filename):
 def read_obj(filename):
     values = np.loadtxt(filename, usecols=(1,2,3,4,5,6))
     return values[:, :3], values[:, 3:6]
+
+def write_ply(points, colors, out_filename):
+    N = points.shape[0]
+    fout = open(out_filename, 'w')
+    for i in range(N):
+        c = colors[i]
+        fout.write('v %f %f %f %f %f %f\n' % (points[i, 0], points[i, 1], points[i, 2], c[0], c[1], c[2]))
+    fout.close()

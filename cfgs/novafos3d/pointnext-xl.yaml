@@ -14,7 +14,7 @@ model:
     width: 64 
     in_channels: 4
     expansion: 4
-    radius: 0.1
+    radius: 0.1 #ball radius
     nsample: 32
     aggr_args:
       feature_type: 'dp_fj'
