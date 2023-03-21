@@ -5,6 +5,7 @@ sys.path.insert(0, os.path.join(os.path.dirname(os.path.abspath(__file__))))
 import argparse
 import yaml
 import numpy as np
+import wandb   
 
 from openpoints.utils import EasyConfig, dist_utils, generate_exp_directory, resume_exp_directory
 from examples.segmentation.main import main as segmentation_main
@@ -60,6 +61,8 @@ if __name__ == '__main__':
 
     # wandb config
     cfg.wandb.name = cfg.run_name
+    my_table = wandb.Table(columns=["a", "b"], data=[["1a", "1b"], ["2a", "2b"]])
+    wandb.log({"table_key": my_table})
 
     gpu = 0 # 1
     segmentation_main(gpu, cfg)

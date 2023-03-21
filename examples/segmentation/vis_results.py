@@ -75,32 +75,35 @@ def read_obj(filename):
 
 # --------------------------------
 # 1,4,5,40 
-idx = 1
+idx = 13
 #data_dir = '/home/lasse/Git/PointNeXt/log/s3dis/s3dis-train-pointnext-xl-ngpus1-seed1045-20221008-170028-9LKswMZCFEnShmwcCgsFdY_ckpt_best.pth_20221008-233159-CiCAoPyMoVReUYhFcoHAM4/visualization'
 #data_dir = '/Users/lhh/Downloads/visualization_s3dis'
 #dataset_name = 's3dis-Area5'
-data_dir = '/Volumes/LHH-WD-1TB/data/Novafos-3D/40-10-split/PointNeXt_results/visualization_50'
-dataset_name = 'novafos3d-Area5'
+data_dir = '/Volumes/LHH-WD-1TB/data/Novafos-3D/Visualization/visualization_snog_vest/visualization/'
+dataset_name = 'novafos3d-cloud'
 # --------------------------------
 
 method_names = ['pred']
-file_list = [os.path.join(data_dir, f'input-{dataset_name}-{idx}.obj')]
+file_list = [os.path.join(data_dir, f'input-{dataset_name}_{idx}.obj')]
 for method_name in method_names:
-    file_list.append(os.path.join(data_dir, f'{method_name}-{dataset_name}-{idx}.obj'))
+    file_list.append(os.path.join(data_dir, f'{method_name}-{dataset_name}_{idx}.obj'))
 
-file_list.append(os.path.join(data_dir, f'gt-{dataset_name}-{idx}.obj'))
+#file_list.append(os.path.join(data_dir, f'gt-{dataset_name}_{idx}.obj'))
 
 input_points, input_colors =read_obj(file_list[0])
-valid_idx = input_points[:, 2] < 3
+valid_idx = input_points[:, 2] < 6
 input_points = input_points[valid_idx]
-gt_points, gt_colors =read_obj(file_list[-1])
+#gt_points, gt_colors =read_obj(file_list[-1])
 method1_points, method1_colors =read_obj(file_list[1])
-method2_points, method2_colors =read_obj(file_list[2])
+#method2_points, method2_colors =read_obj(file_list[2])
 
 #vis_multi_points([input_points, input_points, input_points, input_points], [input_colors[valid_idx]*255.,  method1_colors[valid_idx], method2_colors[valid_idx], gt_colors[valid_idx]])
 
-# 3 window view | Input cloud in colors | Prediction | Ground Truth |
-vis_multi_points([input_points, input_points, input_points], [input_colors[valid_idx], method1_colors[valid_idx], gt_colors[valid_idx]])
+# 3 window view | Input cloud in colors | Prediction | Ground Truth | 
+# vis_multi_points([input_points, input_points, input_points], [input_colors[valid_idx], method1_colors[valid_idx], gt_colors[valid_idx]])
 
 # 2 window view | Prediction | Ground Truth |
 # vis_multi_points([input_points, input_points], [method1_colors[valid_idx], gt_colors[valid_idx]])
+
+# Inference results | 2 window view | Input cloud in colors | Prediction |
+vis_multi_points([input_points, input_points], [input_colors[valid_idx], method1_colors[valid_idx]])

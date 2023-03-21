@@ -305,7 +305,7 @@ if __name__ == '__main__':
     parser.add_argument('--mode', type=str, help='Wandb project name', default="test")
     parser.add_argument('--visualize', type=bool, help='whether to visualize the results of not', default=True)
     parser.add_argument('--pretrained_path', type=str,
-                        default="/home/simon/aau/PHD-RESEARCH-3D-point-segmentation/repos/PointNeXtSimon/log/novafos3d/novafos3d-train-pointnext-xl-ngpus1-seed42---epochs-200-20221215-005419-YAvLWDKpvvgYhPvqQD2je8/checkpoint/novafos3d-train-pointnext-xl-ngpus1-seed42---epochs-200-20221215-005419-YAvLWDKpvvgYhPvqQD2je8_ckpt_best.pth",
+                        default="/home/lasse/Git/PointNeXt/log/novafos3d/novafos3d-train-pointnext-xl-ngpus1-seed2696-20230210-150344-2PXLfpA5HQ8UYCXUJSr5gR/checkpoint/novafos3d-train-pointnext-xl-ngpus1-seed2696-20230210-150344-2PXLfpA5HQ8UYCXUJSr5gR_ckpt_best.pth",
                         help='path to a pretrained model'
                         )
 
@@ -401,3 +401,6 @@ if __name__ == '__main__':
     for cls in classes:
         # print class wise iou and acc
         logging.info(f"{cls}: IoU: {ious[classes.index(cls)]:.4f}, Acc: {accs[classes.index(cls)]:.4f}")
+
+    # wandb config
+    cfg.wandb.name = cfg.run_name
