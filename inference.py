@@ -123,7 +123,7 @@ def inferece(model, data_list, cfg):
     set_random_seed(0)
     cfg.visualize = cfg.get('visualize', False)
     if cfg.visualize:
-        from openpoints.dataset.vis3d import write_obj
+        from openpoints.dataset.vis3d import write_obj, write_ply
         cfg.vis_dir = os.path.join(cfg.run_dir, 'visualization')
         os.makedirs(cfg.vis_dir, exist_ok=True)
         cfg.cmap = cfg.cmap.astype(np.float32) / 255.
@@ -241,6 +241,9 @@ def inferece(model, data_list, cfg):
                 write_obj(coord, gt, os.path.join(cfg.vis_dir, f'gt-{file_name}.obj'))
             # output pred labels
             write_obj(coord, pred, os.path.join(cfg.vis_dir, f'pred-{file_name}.obj'))
+
+            # output ply file
+            write_ply(coord, feat, pred, os.path.join(cfg.vis_dir, f'inf-{file_name}.txt'))
 
         if cfg.get('save_pred', False):
 

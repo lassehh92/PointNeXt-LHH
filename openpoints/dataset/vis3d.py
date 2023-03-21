@@ -6,24 +6,6 @@ Color Reference: https://colorbrewer2.org/
 """
 
 
-# Qualitative_color_map =[
-# #a6cee3
-# #1f78b4
-# #b2df8a
-# #33a02c
-# #fb9a99
-# #e31a1c
-# #fdbf6f
-# #ff7f00
-# #cab2d6
-# #6a3d9a
-# #ffff99
-# #b15928
-#
-#
-# ]
-
-
 def vis_points(points, colors=None, labels=None, color_map='Paired', opacity=1.0, point_size=5.0):
     """Visualize a point cloud
     Note about direction in the visualization:  x: horizontal right (red arrow), y: vertical up (green arrow), and z: inside (blue arrow)
@@ -155,10 +137,11 @@ def read_obj(filename):
     values = np.loadtxt(filename, usecols=(1,2,3,4,5,6))
     return values[:, :3], values[:, 3:6]
 
-def write_ply(points, colors, out_filename):
+def write_ply(points, colors, labels, out_filename):
     N = points.shape[0]
     fout = open(out_filename, 'w')
     for i in range(N):
         c = colors[i]
-        fout.write('v %f %f %f %f %f %f\n' % (points[i, 0], points[i, 1], points[i, 2], c[0], c[1], c[2]))
+        l = labels[i]
+        fout.write('v %f %f %f %f %f %f %d\n' % (points[i, 0], points[i, 1], points[i, 2], c[0], c[1], c[2], l))
     fout.close()
