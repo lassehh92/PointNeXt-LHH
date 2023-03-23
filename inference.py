@@ -84,7 +84,9 @@ def load_data(data_path, cfg):
             # subtract 1 from label to make it start from 0
             label -= 1
 
-    coord -= coord.min(0)
+    # print(coord.min(0))
+    # coord -= coord.min(0)
+    # print(coord.min(0))
 
     idx_points = []
     voxel_idx, reverse_idx_part, reverse_idx_sort = None, None, None
@@ -230,6 +232,7 @@ def inferece(model, data_list, cfg):
         if cfg.visualize:
             gt = label.cpu().numpy().squeeze() if label is not None else None
             pred = pred.cpu().numpy().squeeze()
+            pred_label = pred
             gt = cfg.cmap[gt, :] if gt is not None else None
             pred = cfg.cmap[pred, :]
             # output pred labels
@@ -243,7 +246,7 @@ def inferece(model, data_list, cfg):
             write_obj(coord, pred, os.path.join(cfg.vis_dir, f'pred-{file_name}.obj'))
 
             # output ply file
-            write_ply(coord, feat, pred, os.path.join(cfg.vis_dir, f'inf-{file_name}.txt'))
+            write_ply(coord, feat, pred_label, os.path.join(cfg.vis_dir, f'inf-{file_name}.txt'))
 
         if cfg.get('save_pred', False):
 
@@ -376,7 +379,7 @@ if __name__ == '__main__':
     # logger
     setup_logger_dist(cfg.log_path, cfg.rank, name=cfg.dataset.common.NAME)
 
-    set_random_seed(cfg.seed + cfg.rank, deterministic=cfg.deterministic)
+    # set_random_seed(cfg.seed + cfg.rank, deterministic=cfg.deterministic)
     torch.backends.cudnn.enabled = True
     logging.info(cfg)
 

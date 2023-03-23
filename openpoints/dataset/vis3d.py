@@ -143,5 +143,5 @@ def write_ply(points, colors, labels, out_filename):
     for i in range(N):
         c = colors[i]
         l = labels[i]
-        fout.write('v %f %f %f %f %f %f %d\n' % (points[i, 0], points[i, 1], points[i, 2], c[0], c[1], c[2], l))
+        fout.write('%f %f %f %f %f %f %f\n' % (points[i, 0], points[i, 1], points[i, 2], c[0], c[1], c[2], l))
     fout.close()
