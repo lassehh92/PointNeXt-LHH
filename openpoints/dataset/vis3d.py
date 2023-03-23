@@ -137,7 +137,7 @@ def read_obj(filename):
     values = np.loadtxt(filename, usecols=(1,2,3,4,5,6))
     return values[:, :3], values[:, 3:6]
 
-def write_ply(points, colors, labels, out_filename):
+def write_txt(points, colors, labels, out_filename):
     N = points.shape[0]
     fout = open(out_filename, 'w')
     for i in range(N):
@@ -145,3 +145,20 @@ def write_ply(points, colors, labels, out_filename):
         l = labels[i]
         fout.write('%f %f %f %f %f %f %f\n' % (points[i, 0], points[i, 1], points[i, 2], c[0], c[1], c[2], l))
     fout.close()
+
+def write_ply(points, colors, labels, out_filename):
+    N = points.shape[0]
+    fout = open(out_filename, 'w')
+    fout.write('ply\nformat ascii 1.0\n')
+    fout.write('element vertex %d\n' % N)
+    fout.write('property float x\nproperty float y\nproperty float z\n')
+    fout.write('property uchar red\nproperty uchar green\nproperty uchar blue\n')
+    fout.write('property uint label\n')
+    fout.write('end_header\n')
+    for i in range(N):
+        c = colors[i]
+        l = labels[i]
+        fout.write('%f %f %f %d %d %d %d\n' % (points[i, 0], points[i, 1], points[i, 2], c[0], c[1], c[2], l))
+    fout.close()
+
+
