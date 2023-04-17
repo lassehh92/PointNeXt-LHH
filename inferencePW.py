@@ -18,6 +18,8 @@ from openpoints.transforms import build_transforms_from_cfg
 
 from torch import distributed as dist
 
+def list_full_paths(directory):
+    return [os.path.join(directory, file) for file in os.listdir(directory)]
 
 def generate_data_list(cfg):
     if 'novafos3d' in cfg.dataset.common.NAME.lower():
@@ -195,17 +197,11 @@ def inferece(model, data_list, cfg):
         # from openpoints.dataset.vis3d import vis_points, vis_multi_points
         # vis_multi_points([coord, coord], labels=[label.cpu().numpy(), all_logits.argmax(dim=1).squeeze().cpu().numpy()])
 
-        if 's3dis' in dataset_name:
-            file_name = f'{dataset_name}-Area{cfg.dataset.common.test_area}-{os.path.basename(data_path.split(".")[0])}'
-        elif 'novafos3d' in dataset_name:
-            file_name = f'{dataset_name}-Area{cfg.dataset.common.test_area}-{os.path.basename(data_path.split(".")[0])}'
-        else:
-            file_name = f'{dataset_name}-{os.path.basename(data_path.split(".")[0])}'
+        file_name = f'{dataset_name}-{os.path.basename(data_path.split(".")[0])}'
 
         if cfg.visualize:
             gt = label.cpu().numpy().squeeze() if label is not None else None
             pred = pred.cpu().numpy().squeeze()
-            pred_label = pred
             gt = cfg.cmap[gt, :] if gt is not None else None
             pred = cfg.cmap[pred, :]
             # output pred labels
@@ -219,11 +215,11 @@ def inferece(model, data_list, cfg):
             write_obj(coord, pred, os.path.join(cfg.vis_dir, f'pred-{file_name}.obj'))
 
         if cfg.pointview:
-            # gt = label.cpu().numpy().squeeze() if label is not None else None
             pred = pred.cpu().numpy().squeeze()
+            feat = feat*255
 
-            # output ply file
-            write_txt(coord, feat, pred, os.path.join(cfg.pw_dir, f'inf-{file_name}.txt'))
+            # output txt file
+            # write_txt(coord, feat, pred, os.path.join(cfg.pw_dir, f'inf-{file_name}.txt'))
 
             # output ply file
             write_ply(coord, feat, pred, os.path.join(cfg.pw_dir, f'inf-{file_name}.ply'))
@@ -367,18 +363,20 @@ if __name__ == '__main__':
     logging.info(f'Testing model {os.path.basename(cfg.pretrained_path)}...')
 
     if os.path.isdir(args.source):
-        data_list = generate_data_list(cfg)
+        # data_list = generate_data_list(cfg)
+        data_list = list_full_paths(args.source)
     else:
         data_list = [args.source]
 
     assert [os.path.exists(data) for data in data_list], f"Data path in {data_list} does not exist!"
 
-    miou, macc, oa, ious, accs, cm = inferece(model, data_list, cfg)
-    logging.info(f"Test mIoU: {miou:.4f}, mAcc: {macc:.4f}, OA: {oa:.4f}")
+    #miou, macc, oa, ious, accs, cm = inferece(model, data_list, cfg)
+    inferece(model, data_list, cfg)
+    #logging.info(f"Test mIoU: {miou:.4f}, mAcc: {macc:.4f}, OA: {oa:.4f}")
 
-    for cls in classes:
+    #for cls in classes:
         # print class wise iou and acc
-        logging.info(f"{cls}: IoU: {ious[classes.index(cls)]:.4f}, Acc: {accs[classes.index(cls)]:.4f}")
+    #    logging.info(f"{cls}: IoU: {ious[classes.index(cls)]:.4f}, Acc: {accs[classes.index(cls)]:.4f}")
 
     # wandb config
     cfg.wandb.name = cfg.run_name
