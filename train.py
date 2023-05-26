@@ -61,8 +61,8 @@ if __name__ == '__main__':
 
     # wandb config
     cfg.wandb.name = cfg.run_name
-    my_table = wandb.Table(columns=["a", "b"], data=[["1a", "1b"], ["2a", "2b"]])
-    wandb.log({"table_key": my_table})
+    # my_table = wandb.Table(columns=["a", "b"], data=[["1a", "1b"], ["2a", "2b"]])
+    # wandb.log({"table_key": my_table})
 
     gpu = 0 # 1
     segmentation_main(gpu, cfg)
