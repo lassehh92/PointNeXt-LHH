@@ -79,7 +79,7 @@ idx = 13
 #data_dir = '/home/lasse/Git/PointNeXt/log/s3dis/s3dis-train-pointnext-xl-ngpus1-seed1045-20221008-170028-9LKswMZCFEnShmwcCgsFdY_ckpt_best.pth_20221008-233159-CiCAoPyMoVReUYhFcoHAM4/visualization'
 #data_dir = '/Users/lhh/Downloads/visualization_s3dis'
 #dataset_name = 's3dis-Area5'
-data_dir = '/Volumes/LHH-WD-1TB/data/Novafos-3D/Visualization/visualization_snog_vest/visualization/'
+data_dir = '/Volumes/LHH-WD-1TB/data/Novafos-3D/Visualization/visualization_snog_vest/visualization_14_march/'
 dataset_name = 'novafos3d-cloud'
 # --------------------------------
 
@@ -106,4 +106,4 @@ method1_points, method1_colors =read_obj(file_list[1])
 # vis_multi_points([input_points, input_points], [method1_colors[valid_idx], gt_colors[valid_idx]])
 
 # Inference results | 2 window view | Input cloud in colors | Prediction |
-vis_multi_points([input_points, input_points], [input_colors[valid_idx], method1_colors[valid_idx]])
+# vis_multi_points([input_points, input_points], [input_colors[valid_idx], method1_colors[valid_idx]])
