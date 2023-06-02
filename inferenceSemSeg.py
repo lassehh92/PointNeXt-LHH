@@ -21,23 +21,15 @@ from torch import distributed as dist
 def list_full_paths(directory):
     return [os.path.join(directory, file) for file in os.listdir(directory)]
 
-def generate_data_list(cfg):
-    if 'novafos3d' in cfg.dataset.common.NAME.lower():
-        raw_root = os.path.join(cfg.dataset.common.data_root)
-        data_list = sorted(os.listdir(raw_root))
-        data_list = [os.path.join(raw_root, item) for item in data_list if
-                     'Area_{}'.format(cfg.dataset.common.test_area) in item]
-    else:
-        raise Exception('dataset not supported yet'.format(args.data_name))
-    return data_list
-
-
 def load_data(data_path, cfg):
     label, feat = None, None
-    if 'novafos3d' in cfg.dataset.common.NAME.lower():
-        data = np.load(data_path)  # xyzrgbl, N*7
-        coord, feat, label = data[:, :3], data[:, 3:6], data[:, 6]
-        feat = np.clip(feat / 255., 0, 1).astype(np.float32)
+    data = np.load(data_path)  # xyzrgbl, N*7
+    coord, feat, label = data[:, :3], data[:, 3:6], data[:, 6]
+    feat = np.clip(feat / 255., 0, 1).astype(np.float32)
+    # if 'novafos3d' in cfg.dataset.common.NAME.lower():
+    #     data = np.load(data_path)  # xyzrgbl, N*7
+    #     coord, feat, label = data[:, :3], data[:, 3:6], data[:, 6]
+    #     feat = np.clip(feat / 255., 0, 1).astype(np.float32)
 
     idx_points = []
     voxel_idx, reverse_idx_part, reverse_idx_sort = None, None, None
@@ -291,7 +283,6 @@ if __name__ == '__main__':
     logging.info(f'Testing model {os.path.basename(cfg.pretrained_path)}...')
 
     if os.path.isdir(args.source):
-        # data_list = generate_data_list(cfg)
         data_list = list_full_paths(args.source)
     else:
         data_list = [args.source]
