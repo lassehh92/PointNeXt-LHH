@@ -13,7 +13,6 @@ from openpoints.utils import set_random_seed, ConfusionMatrix, load_checkpoint, 
     cal_model_parm_nums, EasyConfig, dist_utils, resume_exp_directory, get_mious
 from openpoints.dataset import get_features_by_keys
 from openpoints.dataset.data_util import voxelize
-# from openpoints.dataset.novafos3d.novafos3d import Novafos3D
 from openpoints.transforms import build_transforms_from_cfg
 
 from torch import distributed as dist
@@ -23,13 +22,13 @@ def list_full_paths(directory):
 
 def load_data(data_path, cfg):
     label, feat = None, None
-    data = np.load(data_path)  # xyzrgbl, N*7
+    data = np.load(data_path)  # xyzrgb
     coord, feat, label = data[:, :3], data[:, 3:6], data[:, 6]
     feat = np.clip(feat / 255., 0, 1).astype(np.float32)
 
     idx_points = []
     voxel_idx, reverse_idx_part, reverse_idx_sort = None, None, None
-    voxel_size = args.voxel_size
+    voxel_size = args.voxel_size # set voxel size via argparser
 
     if voxel_size is not None:
         idx_sort, voxel_idx, count = voxelize(coord, voxel_size, mode=1)
@@ -54,7 +53,7 @@ def load_data(data_path, cfg):
 
 
 @torch.no_grad()
-def inferece(model, data_list, cfg):
+def inference(model, data_list, cfg):
     import time
     model.eval()  # set model to eval mode
     ignored_labels = torch.Tensor(cfg.ignore_index).cuda() if cfg.ignore_index is not None else None
@@ -66,7 +65,6 @@ def inferece(model, data_list, cfg):
         from openpoints.dataset.vis3d import write_ply
         cfg.pw_dir = os.path.join(cfg.run_dir, 'pointview')
         os.makedirs(cfg.pw_dir, exist_ok=True)
-        cfg.cmap = cfg.cmap.astype(np.float32) / 255.
 
     # data
     trans_split = 'val' if cfg.datatransforms.get('test', None) is None else 'test'
@@ -150,7 +148,7 @@ def inferece(model, data_list, cfg):
         feat = feat*255
 
         # output ply file
-        write_ply(coord, feat, pred, os.path.join(cfg.pw_dir, f'inf-{file_name}.ply'))
+        write_ply(coord, feat, pred, os.path.join(cfg.pw_dir, f'SemSeg-{file_name}.ply'))
 
         if label is not None:
             tp, union, count = cm.tp, cm.union, cm.count
@@ -194,7 +192,7 @@ if __name__ == '__main__':
                         default="/home/simon/data/novafos3D/Area_5_cloud-49.npy")
     parser.add_argument('--radius', type=float, default=0.1, help='Radius of initial set abstraction ball query')
     parser.add_argument('--batch_size', type=int, default=2, help='Batch size to use')
-    parser.add_argument('--voxel_size', type=float, default=0.032, help='Voxel size used for voxel downsampling')
+    parser.add_argument('--voxel_size', type=float, default=0.03, help='Voxel size used for voxel downsampling')
     parser.add_argument('--mode', type=str, help='Wandb project name', default="test")
     parser.add_argument('--pointview', type=bool, help='whether to output the results as a point cloud in ply-format or not', default=True)
     parser.add_argument('--pretrained_path', type=str,
@@ -209,12 +207,6 @@ if __name__ == '__main__':
     cfg.update(opts)  # overwrite the default arguments in yml
     cfg.mode = "test"
     cfg.pointview = args.pointview
-
-    # if 'novafos3d' in cfg.dataset.common.NAME.lower():
-    #     cfg.cmap = np.array(Novafos3D.cmap)
-    #     classes = Novafos3D.classes
-    # else:
-    #     raise NotImplementedError
 
     if args.voxel_size is not None:
         cfg.dataset.common.voxel_size = args.voxel_size
@@ -279,13 +271,8 @@ if __name__ == '__main__':
 
     assert [os.path.exists(data) for data in data_list], f"Data path in {data_list} does not exist!"
 
-    #miou, macc, oa, ious, accs, cm = inferece(model, data_list, cfg)
-    inferece(model, data_list, cfg)
-    #logging.info(f"Test mIoU: {miou:.4f}, mAcc: {macc:.4f}, OA: {oa:.4f}")
-
-    #for cls in classes:
-        # print class wise iou and acc
-    #    logging.info(f"{cls}: IoU: {ious[classes.index(cls)]:.4f}, Acc: {accs[classes.index(cls)]:.4f}")
+    # Run Inference
+    inference(model, data_list, cfg)
 
     # wandb config
     cfg.wandb.name = cfg.run_name
