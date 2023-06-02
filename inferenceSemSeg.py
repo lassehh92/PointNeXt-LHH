@@ -89,9 +89,8 @@ def inferece(model, data_list, cfg):
 
     cfg.save_path = cfg.get('save_path', f'results/{cfg.task_name}/{cfg.dataset.test.split}/{cfg.cfg_basename}')
     os.makedirs(cfg.save_path, exist_ok=True)
-
-    if not 'inropa' in cfg.dataset.common.NAME.lower():
-        gravity_dim = cfg.datatransforms.kwargs.gravity_dim
+    
+    gravity_dim = cfg.datatransforms.kwargs.gravity_dim
 
     nearest_neighbor = cfg.get('test_mode', 'multi_voxel') == 'nearest_neighbor'
     points_per_sec_total = []
@@ -165,12 +164,11 @@ def inferece(model, data_list, cfg):
 
         file_name = f'{dataset_name}-{os.path.basename(data_path.split(".")[0])}'
 
-        if cfg.pointview:
-            pred = pred.cpu().numpy().squeeze()
-            feat = feat*255
+        pred = pred.cpu().numpy().squeeze()
+        feat = feat*255
 
-            # output ply file
-            write_ply(coord, feat, pred, os.path.join(cfg.pw_dir, f'inf-{file_name}.ply'))
+        # output ply file
+        write_ply(coord, feat, pred, os.path.join(cfg.pw_dir, f'inf-{file_name}.ply'))
 
         if label is not None:
             tp, union, count = cm.tp, cm.union, cm.count
@@ -216,7 +214,6 @@ if __name__ == '__main__':
     parser.add_argument('--batch_size', type=int, default=1, help='Batch size to use')
     parser.add_argument('--voxel_size', type=float, default=0.032, help='Voxel size used for voxel downsampling')
     parser.add_argument('--mode', type=str, help='Wandb project name', default="test")
-    parser.add_argument('--visualize', type=bool, help='whether to visualize the results of not', default=False)
     parser.add_argument('--pointview', type=bool, help='whether to output the results as a point cloud in ply-format or not', default=True)
     parser.add_argument('--pretrained_path', type=str,
                         default="/home/lasse/Git/PointNeXt/log/novafos3d/novafos3d-train-pointnext-xl-ngpus1-seed2696-20230210-150344-2PXLfpA5HQ8UYCXUJSr5gR/checkpoint/novafos3d-train-pointnext-xl-ngpus1-seed2696-20230210-150344-2PXLfpA5HQ8UYCXUJSr5gR_ckpt_best.pth",
@@ -229,7 +226,6 @@ if __name__ == '__main__':
     cfg.load(args.cfg, recursive=True)
     cfg.update(opts)  # overwrite the default arguments in yml
     cfg.mode = "test"
-    cfg.visualize = args.visualize
     cfg.pointview = args.pointview
 
     if 'novafos3d' in cfg.dataset.common.NAME.lower():
