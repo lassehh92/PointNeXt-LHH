@@ -13,7 +13,7 @@ from openpoints.utils import set_random_seed, ConfusionMatrix, load_checkpoint, 
     cal_model_parm_nums, EasyConfig, dist_utils, resume_exp_directory, get_mious
 from openpoints.dataset import get_features_by_keys
 from openpoints.dataset.data_util import voxelize
-from openpoints.dataset.novafos3d.novafos3d import Novafos3D
+# from openpoints.dataset.novafos3d.novafos3d import Novafos3D
 from openpoints.transforms import build_transforms_from_cfg
 
 from torch import distributed as dist
@@ -29,7 +29,6 @@ def load_data(data_path, cfg):
 
     idx_points = []
     voxel_idx, reverse_idx_part, reverse_idx_sort = None, None, None
-    #voxel_size = cfg.dataset.common.get('voxel_size', None)
     voxel_size = args.voxel_size
 
     if voxel_size is not None:
@@ -73,7 +72,6 @@ def inferece(model, data_list, cfg):
     trans_split = 'val' if cfg.datatransforms.get('test', None) is None else 'test'
     pipe_transform = build_transforms_from_cfg(trans_split, cfg.datatransforms)
 
-    # dataset_name = cfg.dataset.common.NAME.lower()
     len_data = len(data_list)
 
     cfg.save_path = cfg.get('save_path', f'results/{cfg.task_name}/{cfg.dataset.test.split}/{cfg.cfg_basename}')
@@ -111,13 +109,8 @@ def inferece(model, data_list, cfg):
                 if pipe_transform is not None:
                     data = pipe_transform(data)
                 if 'heights' in cfg.feature_keys and 'heights' not in data.keys():
-                    if 'semantickitti' in cfg.dataset.common.NAME.lower():
-                        data['heights'] = torch.from_numpy((coord_part[:, gravity_dim:gravity_dim + 1] - coord_part[:,
-                                                                                                         gravity_dim:gravity_dim + 1].min()).astype(
-                            np.float32)).unsqueeze(0)
-                    else:
-                        data['heights'] = torch.from_numpy(
-                            coord_part[:, gravity_dim:gravity_dim + 1].astype(np.float32)).unsqueeze(0)
+                    data['heights'] = torch.from_numpy(
+                        coord_part[:, gravity_dim:gravity_dim + 1].astype(np.float32)).unsqueeze(0)
                 if not cfg.dataset.common.get('variable', False):
                     if 'x' in data.keys():
                         data['x'] = data['x'].unsqueeze(0)
@@ -200,7 +193,7 @@ if __name__ == '__main__':
     parser.add_argument("--source", type=str, help="Sample to run inference on or a dir of samples",
                         default="/home/simon/data/novafos3D/Area_5_cloud-49.npy")
     parser.add_argument('--radius', type=float, default=0.1, help='Radius of initial set abstraction ball query')
-    parser.add_argument('--batch_size', type=int, default=1, help='Batch size to use')
+    parser.add_argument('--batch_size', type=int, default=2, help='Batch size to use')
     parser.add_argument('--voxel_size', type=float, default=0.032, help='Voxel size used for voxel downsampling')
     parser.add_argument('--mode', type=str, help='Wandb project name', default="test")
     parser.add_argument('--pointview', type=bool, help='whether to output the results as a point cloud in ply-format or not', default=True)
@@ -217,11 +210,11 @@ if __name__ == '__main__':
     cfg.mode = "test"
     cfg.pointview = args.pointview
 
-    if 'novafos3d' in cfg.dataset.common.NAME.lower():
-        cfg.cmap = np.array(Novafos3D.cmap)
-        classes = Novafos3D.classes
-    else:
-        raise NotImplementedError
+    # if 'novafos3d' in cfg.dataset.common.NAME.lower():
+    #     cfg.cmap = np.array(Novafos3D.cmap)
+    #     classes = Novafos3D.classes
+    # else:
+    #     raise NotImplementedError
 
     if args.voxel_size is not None:
         cfg.dataset.common.voxel_size = args.voxel_size
