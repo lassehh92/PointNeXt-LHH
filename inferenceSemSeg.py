@@ -26,14 +26,11 @@ def load_data(data_path, cfg):
     data = np.load(data_path)  # xyzrgbl, N*7
     coord, feat, label = data[:, :3], data[:, 3:6], data[:, 6]
     feat = np.clip(feat / 255., 0, 1).astype(np.float32)
-    # if 'novafos3d' in cfg.dataset.common.NAME.lower():
-    #     data = np.load(data_path)  # xyzrgbl, N*7
-    #     coord, feat, label = data[:, :3], data[:, 3:6], data[:, 6]
-    #     feat = np.clip(feat / 255., 0, 1).astype(np.float32)
 
     idx_points = []
     voxel_idx, reverse_idx_part, reverse_idx_sort = None, None, None
-    voxel_size = cfg.dataset.common.get('voxel_size', None)
+    #voxel_size = cfg.dataset.common.get('voxel_size', None)
+    voxel_size = args.voxel_size
 
     if voxel_size is not None:
         idx_sort, voxel_idx, count = voxelize(coord, voxel_size, mode=1)
@@ -76,7 +73,7 @@ def inferece(model, data_list, cfg):
     trans_split = 'val' if cfg.datatransforms.get('test', None) is None else 'test'
     pipe_transform = build_transforms_from_cfg(trans_split, cfg.datatransforms)
 
-    dataset_name = cfg.dataset.common.NAME.lower()
+    # dataset_name = cfg.dataset.common.NAME.lower()
     len_data = len(data_list)
 
     cfg.save_path = cfg.get('save_path', f'results/{cfg.task_name}/{cfg.dataset.test.split}/{cfg.cfg_basename}')
@@ -154,7 +151,7 @@ def inferece(model, data_list, cfg):
         if label is not None:
             cm.update(pred, label)
 
-        file_name = f'{dataset_name}-{os.path.basename(data_path.split(".")[0])}'
+        file_name = f'{os.path.basename(data_path.split(".")[0])}'
 
         pred = pred.cpu().numpy().squeeze()
         feat = feat*255
