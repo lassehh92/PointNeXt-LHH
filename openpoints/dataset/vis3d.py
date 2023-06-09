@@ -166,8 +166,7 @@ def write_las(points, colors, labels, out_filename):
     N = points.shape[0]
 
     header = laspy.header.Header()
-    header.data_format_id = 2  # Use point format 2 for XYZRGB
-    header.point_format_id = 2
+    header = laspy.LasHeader(point_format=3, version="1.2")
     header.point_count = N
 
     with laspy.file.File(out_filename, mode='w', header=header) as outfile:
