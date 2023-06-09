@@ -62,7 +62,7 @@ def inference(model, data_list, cfg):
     
     cfg.pointview = cfg.get('pointview', False)
     if cfg.pointview:
-        from openpoints.dataset.vis3d import write_ply
+        from openpoints.dataset.vis3d import write_ply, write_las
         cfg.pw_dir = os.path.join(cfg.run_dir, 'pointview')
         os.makedirs(cfg.pw_dir, exist_ok=True)
 
@@ -147,8 +147,11 @@ def inference(model, data_list, cfg):
         pred = pred.cpu().numpy().squeeze()
         feat = feat*255
 
-        # output ply file
-        write_ply(coord, feat, pred, os.path.join(cfg.pw_dir, f'SemSeg-{file_name}.ply'))
+        # # output as PLY-file
+        # write_ply(coord, feat, pred, os.path.join(cfg.pw_dir, f'SemSeg-{file_name}.ply'))
+
+        # output as LAS-file
+        write_las(coord, feat, pred, os.path.join(cfg.pw_dir, f'{file_name}_semseg.las'))
 
         if label is not None:
             tp, union, count = cm.tp, cm.union, cm.count
