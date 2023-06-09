@@ -170,6 +170,7 @@ def write_las(points, colors, labels, out_filename):
     # Create a new header
     header = laspy.LasHeader(point_format=3, version="1.2")
     header.add_extra_dim(laspy.ExtraBytesParams(name="Classification", type=np.uint8))
+    header.scales = np.array([0.00001, 0.00001, 0.00001])
 
     # Create a LasData object
     las_data = laspy.LasData(header)
