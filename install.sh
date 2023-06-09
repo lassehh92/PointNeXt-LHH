@@ -14,7 +14,7 @@ conda activate openpoints
 
 conda install -y pytorch=1.10.1 torchvision cudatoolkit=11.3 -c pytorch -c nvidia
 
-# install relevant packages
+# install relevant packagesp
 pip install torch-scatter -f https://data.pyg.org/whl/torch-1.10.1+cu113.html
 pip install -r requirements.txt
 

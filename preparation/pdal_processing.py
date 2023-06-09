@@ -3,7 +3,7 @@ import pdal
 import json
 
 
-input_path="/Volumes/LHH-WD-1TB/data/PointView_implementation_test/" # input path to dir containing the point cloud files
+input_path="/Volumes/LHH-WD-1TB/data/PointView_implementation_test/" # input path to dir containing the point cloud filese
 output_path="/Volumes/LHH-WD-1TB/data/PointView_implementation_test/processed2/" # output path to dir (will be created if not already) where the processed point cloud files will end up
 
 # make sure output directory exists
