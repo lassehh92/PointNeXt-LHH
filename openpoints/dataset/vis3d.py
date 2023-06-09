@@ -162,20 +162,28 @@ def write_ply(points, colors, labels, out_filename):
         fout.write('%f %f %f %d %d %d %d\n' % (points[i, 0], points[i, 1], points[i, 2], c[0], c[1], c[2], l))
     fout.close()
 
+import laspy
+
 def write_las(points, colors, labels, out_filename):
     N = points.shape[0]
 
-    header = laspy.header.Header()
+    # Create a new header
     header = laspy.LasHeader(point_format=3, version="1.2")
-    header.point_count = N
+    header.add_extra_dim(laspy.ExtraBytesParams(name="Classification", type=np.uint8))
 
-    with laspy.file.File(out_filename, mode='w', header=header) as outfile:
-        outfile.x = points[:, 0].astype('float32')
-        outfile.y = points[:, 1].astype('float32')
-        outfile.z = points[:, 2].astype('float32')
-        outfile.red = colors[:, 0].astype('uint16')
-        outfile.green = colors[:, 1].astype('uint16')
-        outfile.blue = colors[:, 2].astype('uint16')
-        outfile.classification = labels.astype('uint8')
+    # Create a LasData object
+    las_data = laspy.LasData(header)
 
-        outfile.close()
+    # Assign data to LasData object
+    las_data.x = points[:, 0]
+    las_data.y = points[:, 1]
+    las_data.z = points[:, 2]
+    las_data.Classification = labels.astype(np.uint8)
+
+    # Set RGB color
+    las_data.red = colors[:, 0].astype(np.uint16)
+    las_data.green = colors[:, 1].astype(np.uint16)
+    las_data.blue = colors[:, 2].astype(np.uint16)
+
+    # Write to LAS file
+    las_data.write(out_filename)
