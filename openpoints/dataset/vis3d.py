@@ -1,5 +1,6 @@
 import torch 
 import numpy as np
+import laspy
 """
 2022@PointNeXt, 
 Color Reference: https://colorbrewer2.org/ 
@@ -161,4 +162,21 @@ def write_ply(points, colors, labels, out_filename):
         fout.write('%f %f %f %d %d %d %d\n' % (points[i, 0], points[i, 1], points[i, 2], c[0], c[1], c[2], l))
     fout.close()
 
+def write_las(points, colors, labels, out_filename):
+    N = points.shape[0]
 
+    header = laspy.header.Header()
+    header.data_format_id = 2  # Use point format 2 for XYZRGB
+    header.point_format_id = 2
+    header.point_count = N
+
+    with laspy.file.File(out_filename, mode='w', header=header) as outfile:
+        outfile.x = points[:, 0].astype('float32')
+        outfile.y = points[:, 1].astype('float32')
+        outfile.z = points[:, 2].astype('float32')
+        outfile.red = colors[:, 0].astype('uint16')
+        outfile.green = colors[:, 1].astype('uint16')
+        outfile.blue = colors[:, 2].astype('uint16')
+        outfile.classification = labels.astype('uint8')
+
+        outfile.close()

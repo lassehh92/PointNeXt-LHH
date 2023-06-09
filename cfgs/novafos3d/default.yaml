@@ -3,7 +3,7 @@ dataset:
   common:
     NAME: Novafos3D
     data_root: data/Novafos3D/novafos3dfull
-    test_area: 1
+    test_area: 2
     voxel_size: 0.03 # 0.04 is to much. Start try with 0.01 0.015 0.02
   train:
     split: train

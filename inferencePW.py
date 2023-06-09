@@ -276,7 +276,7 @@ if __name__ == '__main__':
     parser.add_argument('--cfg', type=str, required=False, help='config file',
                         default="cfgs/novafos3d/pointnext-xl.yaml")
     parser.add_argument("--source", type=str, help="Sample to run inference on or a dir of samples",
-                        default="/home/simon/data/novafos3D/Area_5_cloud-49.npy")
+                        default="/home/lasse/Git/PointNeXt/data/Novafos3D/P8-Kasper")
     parser.add_argument('--radius', type=float, default=0.1, help='Radius of initial set abstraction ball query')
     parser.add_argument('--batch_size', type=int, default=1, help='Batch size to use')
     parser.add_argument('--voxel_size', type=float, default=0.032, help='Voxel size used for voxel downsampling')
@@ -284,7 +284,7 @@ if __name__ == '__main__':
     parser.add_argument('--visualize', type=bool, help='whether to visualize the results of not', default=False)
     parser.add_argument('--pointview', type=bool, help='whether to output the results as a point cloud in ply-format or not', default=True)
     parser.add_argument('--pretrained_path', type=str,
-                        default="/home/lasse/Git/PointNeXt/log/novafos3d/novafos3d-train-pointnext-xl-ngpus1-seed2696-20230210-150344-2PXLfpA5HQ8UYCXUJSr5gR/checkpoint/novafos3d-train-pointnext-xl-ngpus1-seed2696-20230210-150344-2PXLfpA5HQ8UYCXUJSr5gR_ckpt_best.pth",
+                        default="/home/lasse/Git/PointNeXt/log/novafos3d/novafos3d-train-pointnext-xl-ngpus1-seed6107-20230518-122543-DSa7GQLExJKRWMQcBt3gQF/checkpoint/novafos3d-train-pointnext-xl-ngpus1-seed6107-20230518-122543-DSa7GQLExJKRWMQcBt3gQF_ckpt_best.pth",
                         help='path to a pretrained model'
                         )
 
