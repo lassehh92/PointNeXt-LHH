@@ -22,12 +22,10 @@ def list_full_paths(directory):
 
 def load_data(data_path, cfg):
     label, feat = None, None
-    data = np.load(data_path)  # xyzrgb
-    coord, feat, label = data[:, :3], data[:, 3:6], data[:, 6]
+    data = np.load(data_path)  # xyzrgbl
+    #coord, feat, label = data[:, :3], data[:, 3:6], data[:, 6]
+    coord, feat = data[:, :3], data[:, 3:6]
     feat = np.clip(feat / 255., 0, 1).astype(np.float32)
-    # coord = data[['x', 'y', 'z']].view((np.float64, len(data.dtype.names)))
-    # feat = data[['r', 'g', 'b']].view((np.int8, len(data.dtype.names)))
-    # label = data['classification']
 
     idx_points = []
     voxel_idx, reverse_idx_part, reverse_idx_sort = None, None, None

@@ -162,15 +162,14 @@ def write_ply(points, colors, labels, out_filename):
         fout.write('%f %f %f %d %d %d %d\n' % (points[i, 0], points[i, 1], points[i, 2], c[0], c[1], c[2], l))
     fout.close()
 
-import laspy
-
 def write_las(points, colors, labels, out_filename):
     N = points.shape[0]
 
     # Create a new header
     header = laspy.LasHeader(point_format=3, version="1.2")
     header.add_extra_dim(laspy.ExtraBytesParams(name="Classification", type=np.uint8))
-    header.scales = np.array([0.0000001, 0.0000001, 0.0000001])
+    header.offsets = np.min(points, axis=0)
+    header.scales = np.array([0.00001, 0.00001, 0.00001])
 
     # Create a LasData object
     las_data = laspy.LasData(header)
