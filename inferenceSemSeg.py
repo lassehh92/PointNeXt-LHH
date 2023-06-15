@@ -7,6 +7,7 @@ import logging
 import numpy as np
 from tqdm import tqdm
 from torch_scatter import scatter
+import laspy
 
 from openpoints.models import build_model_from_cfg
 from openpoints.utils import set_random_seed, ConfusionMatrix, load_checkpoint, setup_logger_dist, \
@@ -20,8 +21,38 @@ from torch import distributed as dist
 def list_full_paths(directory):
     return [os.path.join(directory, file) for file in os.listdir(directory)]
 
+def load_las_data(data_path, cfg):
+    las_data = laspy.read(data_path)  # xyzrgb
+    data = np.vstack([las_data.x, las_data.y, las_data.z, las_data.red, las_data.green, las_data.blue]).T
+    coord, feat = data[:, :3], data[:, 3:6]
+    feat = np.clip(feat / 255., 0, 1).astype(np.float32)
+
+    idx_points = []
+    voxel_idx, reverse_idx_part, reverse_idx_sort = None, None, None
+    voxel_size = args.voxel_size # set voxel size via argparser
+
+    if voxel_size is not None:
+        idx_sort, voxel_idx, count = voxelize(coord, voxel_size, mode=1)
+        if cfg.get('test_mode', 'multi_voxel') == 'nearest_neighbor':
+            idx_select = np.cumsum(np.insert(count, 0, 0)[0:-1]) + np.random.randint(0, count.max(), count.size) % count
+            idx_part = idx_sort[idx_select]
+            npoints_subcloud = voxel_idx.max() + 1
+            idx_shuffle = np.random.permutation(npoints_subcloud)
+            idx_part = idx_part[idx_shuffle]  # idx_part: randomly sampled points of a voxel
+            reverse_idx_part = np.argsort(idx_shuffle, axis=0)  # revevers idx_part to sorted
+            idx_points.append(idx_part)
+            reverse_idx_sort = np.argsort(idx_sort, axis=0)
+        else:
+            for i in range(count.max()):
+                idx_select = np.cumsum(np.insert(count, 0, 0)[0:-1]) + i % count
+                idx_part = idx_sort[idx_select]
+                np.random.shuffle(idx_part)
+                idx_points.append(idx_part)
+    else:
+        idx_points.append(np.arange(coord.shape[0]))
+    return coord, feat, idx_points, voxel_idx, reverse_idx_part, reverse_idx_sort
+
 def load_data(data_path, cfg):
-    # label, feat = None, None
     data = np.load(data_path)  # xyzrgb
     coord, feat = data[:, :3], data[:, 3:6]
     feat = np.clip(feat / 255., 0, 1).astype(np.float32)
@@ -85,8 +116,6 @@ def inference(model, data_list, cfg):
         cm = ConfusionMatrix(num_classes=cfg.num_classes, ignore_index=cfg.ignore_index)
         all_logits = []
         coord, feat, idx_points, voxel_idx, reverse_idx_part, reverse_idx = load_data(data_path, cfg)
-        # if label is not None:
-        #     label = torch.from_numpy(label.astype(np.int).squeeze()).cuda(non_blocking=True)
 
         len_part = len(idx_points)
         nearest_neighbor = len_part == 1
@@ -139,8 +168,6 @@ def inference(model, data_list, cfg):
         points_per_sec = len(all_logits) / (end_time - start_time)
         points_per_sec_total.append(points_per_sec)
         logging.info(f'Inference time: {end_time - start_time:.2f}s ({points_per_sec:.2f} points/s)')
-        # if label is not None:
-        #     cm.update(pred, label)
 
         file_name = f'{os.path.basename(data_path.split(".")[0])}'
 
@@ -151,7 +178,7 @@ def inference(model, data_list, cfg):
         # write_ply(coord, feat, pred, os.path.join(cfg.pw_dir, f'SemSeg-{file_name}.ply'))
 
         # output as LAS-file
-        write_las(coord, feat, pred, os.path.join(args.source, f'{file_name}_semseg.las'))
+        write_las(coord, feat, pred, os.path.join(args.source, f'{file_name}_semseg_LAS.las'))
 
     logging.info(f'Average inference speed: {np.mean(points_per_sec_total):.2f} points/s')
 
