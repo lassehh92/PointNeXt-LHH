@@ -115,7 +115,7 @@ def inference(model, data_list, cfg):
         logging.info(f'Inference [{cloud_idx+1}]/[{len_data}] cloud')
         cm = ConfusionMatrix(num_classes=cfg.num_classes, ignore_index=cfg.ignore_index)
         all_logits = []
-        coord, feat, idx_points, voxel_idx, reverse_idx_part, reverse_idx = load_data(data_path, cfg)
+        coord, feat, idx_points, voxel_idx, reverse_idx_part, reverse_idx = load_las_data(data_path, cfg)
 
         len_part = len(idx_points)
         nearest_neighbor = len_part == 1
