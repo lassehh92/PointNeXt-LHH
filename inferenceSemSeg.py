@@ -27,7 +27,7 @@ def load_data(data_path, cfg):
     feat = np.clip(feat / 255., 0, 1).astype(np.float32)
     # coord = data[['x', 'y', 'z']].view((np.float64, len(data.dtype.names)))
     # feat = data[['r', 'g', 'b']].view((np.int8, len(data.dtype.names)))
-    label = data['classification']
+    # label = data['classification']
 
     idx_points = []
     voxel_idx, reverse_idx_part, reverse_idx_sort = None, None, None
