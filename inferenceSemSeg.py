@@ -21,9 +21,8 @@ def list_full_paths(directory):
     return [os.path.join(directory, file) for file in os.listdir(directory)]
 
 def load_data(data_path, cfg):
-    label, feat = None, None
-    data = np.load(data_path)  # xyzrgbl
-    #coord, feat, label = data[:, :3], data[:, 3:6], data[:, 6]
+    # label, feat = None, None
+    data = np.load(data_path)  # xyzrgb
     coord, feat = data[:, :3], data[:, 3:6]
     feat = np.clip(feat / 255., 0, 1).astype(np.float32)
 
@@ -49,8 +48,8 @@ def load_data(data_path, cfg):
                 np.random.shuffle(idx_part)
                 idx_points.append(idx_part)
     else:
-        idx_points.append(np.arange(label.shape[0]))
-    return coord, feat, label, idx_points, voxel_idx, reverse_idx_part, reverse_idx_sort
+        idx_points.append(np.arange(coord.shape[0]))
+    return coord, feat, idx_points, voxel_idx, reverse_idx_part, reverse_idx_sort
 
 
 @torch.no_grad()
@@ -82,12 +81,12 @@ def inference(model, data_list, cfg):
     points_per_sec_total = []
     for cloud_idx, data_path in enumerate(data_list):
         start_time = time.time()
-        logging.info(f'Test [{cloud_idx}]/[{len_data}] cloud')
+        logging.info(f'Inference [{cloud_idx+1}]/[{len_data}] cloud')
         cm = ConfusionMatrix(num_classes=cfg.num_classes, ignore_index=cfg.ignore_index)
         all_logits = []
-        coord, feat, label, idx_points, voxel_idx, reverse_idx_part, reverse_idx = load_data(data_path, cfg)
-        if label is not None:
-            label = torch.from_numpy(label.astype(np.int).squeeze()).cuda(non_blocking=True)
+        coord, feat, idx_points, voxel_idx, reverse_idx_part, reverse_idx = load_data(data_path, cfg)
+        # if label is not None:
+        #     label = torch.from_numpy(label.astype(np.int).squeeze()).cuda(non_blocking=True)
 
         len_part = len(idx_points)
         nearest_neighbor = len_part == 1
@@ -95,7 +94,7 @@ def inference(model, data_list, cfg):
 
         for idx_subcloud in pbar:
 
-            pbar.set_description(f"Test on {cloud_idx}-th cloud [{idx_subcloud}]/[{len_part}]]")
+            pbar.set_description(f"SemSeg on {cloud_idx+1}-th cloud [{idx_subcloud}]/[{len_part}]]")
             if not (nearest_neighbor and idx_subcloud > 0):
                 idx_part = idx_points[idx_subcloud]
                 coord_part = coord[idx_part]
@@ -140,8 +139,8 @@ def inference(model, data_list, cfg):
         points_per_sec = len(all_logits) / (end_time - start_time)
         points_per_sec_total.append(points_per_sec)
         logging.info(f'Inference time: {end_time - start_time:.2f}s ({points_per_sec:.2f} points/s)')
-        if label is not None:
-            cm.update(pred, label)
+        # if label is not None:
+        #     cm.update(pred, label)
 
         file_name = f'{os.path.basename(data_path.split(".")[0])}'
 
@@ -152,39 +151,9 @@ def inference(model, data_list, cfg):
         # write_ply(coord, feat, pred, os.path.join(cfg.pw_dir, f'SemSeg-{file_name}.ply'))
 
         # output as LAS-file
-        write_las(coord, feat, pred, os.path.join(cfg.pw_dir, f'{file_name}_semseg.las'))
-
-        if label is not None:
-            tp, union, count = cm.tp, cm.union, cm.count
-            miou, macc, oa, ious, accs = get_mious(tp, union, count)
-            with np.printoptions(precision=2, suppress=True):
-                logging.info(
-                    f'[{cloud_idx}]/[{len_data}] ({file_name}) cloud,  test_oa , test_macc, test_miou: {oa:.2f} {macc:.2f} {miou:.2f}, '
-                    f'\niou per cls is: {ious}')
-
-            all_cm.value += cm.value
-
-            tp, union, count = all_cm.tp, all_cm.union, all_cm.count
-            if cfg.distributed:
-                dist.all_reduce(tp), dist.all_reduce(union), dist.all_reduce(count)
-            miou, macc, oa, ious, accs = get_mious(tp, union, count)
-            with np.printoptions(precision=2, suppress=True):
-                logging.info(
-                    f'TOTAL metrics: test_oa: {oa:.2f}, test_macc: {macc:.2f}, test_miou: {miou:.2f}'
-                    f'\niou per cls is: {ious}')
-                logging.info('TOTAL counts: {}'.format(count.detach().cpu().numpy()))
-                logging.info('TOTAL tps: {}'.format(tp.detach().cpu().numpy()))
+        write_las(coord, feat, pred, os.path.join(args.source, f'{file_name}_semseg.las'))
 
     logging.info(f'Average inference speed: {np.mean(points_per_sec_total):.2f} points/s')
-
-    if label is not None:
-        tp, union, count = all_cm.tp, all_cm.union, all_cm.count
-        if cfg.distributed:
-            dist.all_reduce(tp), dist.all_reduce(union), dist.all_reduce(count)
-        miou, macc, oa, ious, accs = get_mious(tp, union, count)
-        return miou, macc, oa, ious, accs, cm
-    else:
-        return None, None, None, None, None, None
 
 
 if __name__ == '__main__':
