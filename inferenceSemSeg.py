@@ -29,9 +29,12 @@ def list_full_paths_las_files(directory):
 
 def load_las_data(data_path, cfg):
     las_data = laspy.read(data_path)  # xyzrgb
-    data = np.vstack([las_data.x, las_data.y, las_data.z, las_data.red, las_data.green, las_data.blue]).T
+    r = las_data.red / 256  # Scale down to 8-bit
+    g = las_data.green / 256  
+    b = las_data.blue / 256 
+    data = np.vstack([las_data.x, las_data.y, las_data.z, las_data.r, las_data.g, las_data.b]).T
     coord, feat = data[:, :3], data[:, 3:6]
-    # feat = np.clip(feat / 255., 0, 1).astype(np.float32)
+    feat = np.clip(feat / 255., 0, 1).astype(np.float32)
 
     idx_points = []
     voxel_idx, reverse_idx_part, reverse_idx_sort = None, None, None
