@@ -118,6 +118,7 @@ def inference(model, data_list, cfg):
     points_per_sec_total = []
     for cloud_idx, data_path in enumerate(data_list):
         start_time = time.time()
+        file_name = f'{os.path.basename(data_path.split(".")[0])}'
         logging.info(f'Performing Semantic Segmentation on {file_name} [{cloud_idx+1}]/[{len_data}] cloud')
         cm = ConfusionMatrix(num_classes=cfg.num_classes, ignore_index=cfg.ignore_index)
         all_logits = []
@@ -175,7 +176,7 @@ def inference(model, data_list, cfg):
         points_per_sec_total.append(points_per_sec)
         logging.info(f'Inference time: {end_time - start_time:.2f}s ({points_per_sec:.2f} points/s)')
 
-        file_name = f'{os.path.basename(data_path.split(".")[0])}'
+        #file_name = f'{os.path.basename(data_path.split(".")[0])}'
 
         pred = pred.cpu().numpy().squeeze()
         feat = feat*255
