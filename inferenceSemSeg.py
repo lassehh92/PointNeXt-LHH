@@ -188,7 +188,17 @@ def inference(model, data_list, cfg):
         # write_ply(coord, feat, pred, os.path.join(cfg.pw_dir, f'SemSeg-{file_name}.ply'))
 
         # output as LAS-file
-        write_las(coord, feat, pred, os.path.join(args.source, f'{file_name}_semseg_LAS.las'))
+        # Check if args.source is a file
+        if os.path.isfile(args.source):
+            # Extract the directory path from the file path
+            file_dir = os.path.dirname(args.source)
+            # Create a new file path with the desired filename
+            new_file_path = os.path.join(file_dir, f'{file_name}_semseg_LAS_NEW.las')
+            # Call the write_las function with the new file path
+            write_las(coord, feat, pred, new_file_path)
+        else:
+            # args.source is a folder, so call write_las as usual
+            write_las(coord, feat, pred, os.path.join(args.source, f'{file_name}_semseg_LAS_NEW.las'))
 
     logging.info(f'Average inference speed: {np.mean(points_per_sec_total):.2f} points/s')
 
