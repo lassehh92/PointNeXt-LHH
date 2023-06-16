@@ -18,14 +18,20 @@ from openpoints.transforms import build_transforms_from_cfg
 
 from torch import distributed as dist
 
-def list_full_paths(directory):
-    return [os.path.join(directory, file) for file in os.listdir(directory)]
+def list_full_paths_las_files(directory):
+    file_paths = []
+    files = os.listdir(directory)
+    for file in files:
+        if file.endswith(".las"):
+            full_path = os.path.join(directory, file)
+            file_paths.append(full_path)
+    return file_paths
 
 def load_las_data(data_path, cfg):
     las_data = laspy.read(data_path)  # xyzrgb
     data = np.vstack([las_data.x, las_data.y, las_data.z, las_data.red, las_data.green, las_data.blue]).T
     coord, feat = data[:, :3], data[:, 3:6]
-    feat = np.clip(feat / 255., 0, 1).astype(np.float32)
+    # feat = np.clip(feat / 255., 0, 1).astype(np.float32)
 
     idx_points = []
     voxel_idx, reverse_idx_part, reverse_idx_sort = None, None, None
@@ -112,7 +118,7 @@ def inference(model, data_list, cfg):
     points_per_sec_total = []
     for cloud_idx, data_path in enumerate(data_list):
         start_time = time.time()
-        logging.info(f'Inference [{cloud_idx+1}]/[{len_data}] cloud')
+        logging.info(f'Performing Semantic Segmentation on {file_name} [{cloud_idx+1}]/[{len_data}] cloud')
         cm = ConfusionMatrix(num_classes=cfg.num_classes, ignore_index=cfg.ignore_index)
         all_logits = []
         coord, feat, idx_points, voxel_idx, reverse_idx_part, reverse_idx = load_las_data(data_path, cfg)
@@ -265,7 +271,7 @@ if __name__ == '__main__':
     logging.info(f'Testing model {os.path.basename(cfg.pretrained_path)}...')
 
     if os.path.isdir(args.source):
-        data_list = list_full_paths(args.source)
+        data_list = list_full_paths_las_files(args.source)
     else:
         data_list = [args.source]
 
