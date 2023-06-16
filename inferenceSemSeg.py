@@ -32,7 +32,7 @@ def load_las_data(data_path, cfg):
     r = las_data.red / 256  # Scale down to 8-bit
     g = las_data.green / 256  
     b = las_data.blue / 256 
-    data = np.vstack([las_data.x, las_data.y, las_data.z, las_data.r, las_data.g, las_data.b]).T
+    data = np.vstack([las_data.x, las_data.y, las_data.z, r, g, b]).T
     coord, feat = data[:, :3], data[:, 3:6]
     feat = np.clip(feat / 255., 0, 1).astype(np.float32)
 
