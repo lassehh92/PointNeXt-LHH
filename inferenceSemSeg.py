@@ -197,16 +197,22 @@ def inference(model, data_list, cfg):
         if os.path.isfile(args.source):
             # Extract the directory path from the file path
             file_dir = os.path.dirname(args.source)
+            
             # Create a new file path with the desired filename
-            new_file_path = os.path.join(file_dir, file_name.removesuffix("_2.las")+'_3.las')
+            #new_file_path = os.path.join(file_dir, file_name.removesuffix("_2.las")+'_3.las')
+            
             # Call the write_las function with the new file path
-            write_las(coord, feat, pred, new_file_path)
-            lasdata = laspy.read(os.path.join(file_dir, file_name))
+            #write_las(coord, feat, pred, new_file_path)
+            
+            # Update Classification vaules in las file from prediction results
+            lasdata = laspy.read(os.path.join(file_dir, file_name + '.las'))
             lasdata.classification = pred
-            lasdata.write(os.path.join(file_dir, file_name))
+            lasdata.write(os.path.join(file_dir, file_name +'.las'))
         else:
             # args.source is a folder, so call write_las as usual
             write_las(coord, feat, pred, os.path.join(args.source, file_name.removesuffix("_2.las")+'_3.las'))
+            
+            # Update Classification vaules in las file from prediction results
             lasdata = laspy.read(os.path.join(args.source, file_name))
             lasdata.classification = pred
             lasdata.write(os.path.join(args.source, file_name))
