@@ -63,41 +63,23 @@ def load_las_data(data_path, cfg):
         idx_points.append(np.arange(coord.shape[0]))
     return coord, feat, idx_points, voxel_idx, reverse_idx_part, reverse_idx_sort
 
-def update_las_data(data_path, pred, outfile): # function not finish yet.. 
-    las_data = laspy.read(data_path) 
-    las_data.classification = pred
-    las_data.write(outfile)
+def update_las_classifications(source_path, file_name, pred):
+    # Check if source_path is a file or directory
+    if os.path.isfile(source_path):
+        source_path = os.path.dirname(source_path)
+
+    las_file_path = os.path.join(source_path, file_name + '.las')
     
-def load_data(data_path, cfg):
-    data = np.load(data_path)  # xyzrgb
-    coord, feat = data[:, :3], data[:, 3:6]
-    feat = np.clip(feat / 255., 0, 1).astype(np.float32)
+    # Update Classification values in las file from prediction results
+    lasdata = laspy.read(las_file_path)
+    lasdata.classification[lasdata.classification == 0] = pred
 
-    idx_points = []
-    voxel_idx, reverse_idx_part, reverse_idx_sort = None, None, None
-    voxel_size = args.voxel_size # set voxel size via argparser
+    # remap classification value 
+    lasdata.classification[lasdata.classification == 2] = 9
+    lasdata.classification[lasdata.classification == 1] = 6
+    lasdata.classification[lasdata.classification == 0] = 2
 
-    if voxel_size is not None:
-        idx_sort, voxel_idx, count = voxelize(coord, voxel_size, mode=1)
-        if cfg.get('test_mode', 'multi_voxel') == 'nearest_neighbor':
-            idx_select = np.cumsum(np.insert(count, 0, 0)[0:-1]) + np.random.randint(0, count.max(), count.size) % count
-            idx_part = idx_sort[idx_select]
-            npoints_subcloud = voxel_idx.max() + 1
-            idx_shuffle = np.random.permutation(npoints_subcloud)
-            idx_part = idx_part[idx_shuffle]  # idx_part: randomly sampled points of a voxel
-            reverse_idx_part = np.argsort(idx_shuffle, axis=0)  # revevers idx_part to sorted
-            idx_points.append(idx_part)
-            reverse_idx_sort = np.argsort(idx_sort, axis=0)
-        else:
-            for i in range(count.max()):
-                idx_select = np.cumsum(np.insert(count, 0, 0)[0:-1]) + i % count
-                idx_part = idx_sort[idx_select]
-                np.random.shuffle(idx_part)
-                idx_points.append(idx_part)
-    else:
-        idx_points.append(np.arange(coord.shape[0]))
-    return coord, feat, idx_points, voxel_idx, reverse_idx_part, reverse_idx_sort
-
+    lasdata.write(las_file_path)
 
 @torch.no_grad()
 def inference(model, data_list, cfg):
@@ -187,32 +169,9 @@ def inference(model, data_list, cfg):
 
         #write_las(coord, feat, pred, os.path.join(args.source, file_name + '_semseg.las'))
 
-        # Check if args.source is a file
-        if os.path.isfile(args.source):
-            # Extract the directory path from the file path
-            file_dir = os.path.dirname(args.source)
-            
-            # Update Classification vaules in las file from prediction results
-            lasdata = laspy.read(os.path.join(file_dir, file_name + '.las'))
-            lasdata.classification[lasdata.classification == 0] = pred
-            
-            # remap classification value 
-            lasdata.classification[lasdata.classification == 2] = 9
-            lasdata.classification[lasdata.classification == 1] = 6
-            lasdata.classification[lasdata.classification == 0] = 2
-
-            lasdata.write(os.path.join(file_dir, file_name))
-        else:
-            # Update Classification vaules in las file from prediction results
-            lasdata = laspy.read(os.path.join(args.source, file_name + '.las'))
-            lasdata.classification[lasdata.classification == 0] = pred
-
-            # remap classification value 
-            lasdata.classification[lasdata.classification == 2] = 9
-            lasdata.classification[lasdata.classification == 1] = 6
-            lasdata.classification[lasdata.classification == 0] = 2
-
-            lasdata.write(os.path.join(args.source, file_name))
+        # update Classification values in las file from prediction results
+        update_las_classifications(args.source, file_name, pred)    
+    
 
     logging.info(f'Average inference speed: {np.mean(points_per_sec_total):.2f} points/s')
 
