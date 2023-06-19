@@ -183,29 +183,35 @@ def inference(model, data_list, cfg):
         pred = pred.cpu().numpy().squeeze()
         feat = feat*255
 
-        # output as LAS-file
+        ### LAS-file support ###
+
+        #write_las(coord, feat, pred, os.path.join(args.source, file_name + '_semseg.las'))
+
         # Check if args.source is a file
         if os.path.isfile(args.source):
             # Extract the directory path from the file path
             file_dir = os.path.dirname(args.source)
             
-            # Create a new file path with the desired filename
-            #new_file_path = os.path.join(file_dir, file_name + '_semseg.las')
-            
-            # Call the write_las function with the new file path
-            #write_las(coord, feat, pred, new_file_path)
-            
             # Update Classification vaules in las file from prediction results
             lasdata = laspy.read(os.path.join(file_dir, file_name + '.las'))
             lasdata.classification[lasdata.classification == 0] = pred
-            lasdata.write(os.path.join(file_dir, file_name +'_ai2.las'))
-        else:
-            # args.source is a folder, so call write_las as usual
-            #write_las(coord, feat, pred, os.path.join(args.source, file_name + '_semseg.las'))
             
+            # remap classification value 
+            lasdata.classification[lasdata.classification == 2] = 9
+            lasdata.classification[lasdata.classification == 1] = 6
+            lasdata.classification[lasdata.classification == 0] = 2
+
+            lasdata.write(os.path.join(file_dir, file_name))
+        else:
             # Update Classification vaules in las file from prediction results
-            lasdata = laspy.read(os.path.join(args.source, file_name))
-            lasdata.classification = pred
+            lasdata = laspy.read(os.path.join(args.source, file_name + '.las'))
+            lasdata.classification[lasdata.classification == 0] = pred
+
+            # remap classification value 
+            lasdata.classification[lasdata.classification == 2] = 9
+            lasdata.classification[lasdata.classification == 1] = 6
+            lasdata.classification[lasdata.classification == 0] = 2
+
             lasdata.write(os.path.join(args.source, file_name))
 
     logging.info(f'Average inference speed: {np.mean(points_per_sec_total):.2f} points/s')
