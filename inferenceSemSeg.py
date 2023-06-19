@@ -22,7 +22,7 @@ def list_full_paths_las_files(directory):
     file_paths = []
     files = os.listdir(directory)
     for file in files:
-        if file.endswith(".las"):
+        if file.endswith("_2.las"):
             full_path = os.path.join(directory, file)
             file_paths.append(full_path)
     return file_paths
@@ -61,6 +61,11 @@ def load_las_data(data_path, cfg):
         idx_points.append(np.arange(coord.shape[0]))
     return coord, feat, idx_points, voxel_idx, reverse_idx_part, reverse_idx_sort
 
+def update_las_data(data_path, pred, outfile): # function not finish yet.. 
+    las_data = laspy.read(data_path) 
+    las_data.classification = pred
+    las_data.write(outfile)
+    
 def load_data(data_path, cfg):
     data = np.load(data_path)  # xyzrgb
     coord, feat = data[:, :3], data[:, 3:6]
@@ -193,12 +198,18 @@ def inference(model, data_list, cfg):
             # Extract the directory path from the file path
             file_dir = os.path.dirname(args.source)
             # Create a new file path with the desired filename
-            new_file_path = os.path.join(file_dir, f'{file_name}_semseg_LAS_NEW.las')
+            new_file_path = os.path.join(file_dir, file_name.removesuffix("_2.las")+'_3.las')
             # Call the write_las function with the new file path
             write_las(coord, feat, pred, new_file_path)
+            lasdata = laspy.read(os.path.join(file_dir, file_name))
+            lasdata.classification = pred
+            lasdata.write(os.path.join(file_dir, file_name))
         else:
             # args.source is a folder, so call write_las as usual
-            write_las(coord, feat, pred, os.path.join(args.source, f'{file_name}_semseg_LAS_NEW.las'))
+            write_las(coord, feat, pred, os.path.join(args.source, file_name.removesuffix("_2.las")+'_3.las'))
+            lasdata = laspy.read(os.path.join(args.source, file_name))
+            lasdata.classification = pred
+            lasdata.write(os.path.join(args.source, file_name))
 
     logging.info(f'Average inference speed: {np.mean(points_per_sec_total):.2f} points/s')
 
