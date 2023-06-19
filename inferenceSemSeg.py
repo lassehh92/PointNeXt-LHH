@@ -15,6 +15,7 @@ from openpoints.utils import set_random_seed, ConfusionMatrix, load_checkpoint, 
 from openpoints.dataset import get_features_by_keys
 from openpoints.dataset.data_util import voxelize
 from openpoints.transforms import build_transforms_from_cfg
+from openpoints.dataset.vis3d import write_las
 
 from torch import distributed as dist
 
@@ -104,12 +105,6 @@ def inference(model, data_list, cfg):
     ignored_labels = torch.Tensor(cfg.ignore_index).cuda() if cfg.ignore_index is not None else None
     all_cm = ConfusionMatrix(num_classes=cfg.num_classes, ignore_index=ignored_labels)
     set_random_seed(0)
-    
-    cfg.pointview = cfg.get('pointview', False)
-    if cfg.pointview:
-        from openpoints.dataset.vis3d import write_ply, write_las
-        cfg.pw_dir = os.path.join(cfg.run_dir, 'pointview')
-        os.makedirs(cfg.pw_dir, exist_ok=True)
 
     # data
     trans_split = 'val' if cfg.datatransforms.get('test', None) is None else 'test'
@@ -184,13 +179,8 @@ def inference(model, data_list, cfg):
         points_per_sec_total.append(points_per_sec)
         logging.info(f'Inference time: {end_time - start_time:.2f}s ({points_per_sec:.2f} points/s)')
 
-        #file_name = f'{os.path.basename(data_path.split(".")[0])}'
-
         pred = pred.cpu().numpy().squeeze()
         feat = feat*255
-
-        # # output as PLY-file
-        # write_ply(coord, feat, pred, os.path.join(cfg.pw_dir, f'SemSeg-{file_name}.ply'))
 
         # output as LAS-file
         # Check if args.source is a file
@@ -199,7 +189,7 @@ def inference(model, data_list, cfg):
             file_dir = os.path.dirname(args.source)
             
             # Create a new file path with the desired filename
-            #new_file_path = os.path.join(file_dir, file_name.removesuffix("_2.las")+'_3.las')
+            #new_file_path = os.path.join(file_dir, file_name + '_semseg.las')
             
             # Call the write_las function with the new file path
             #write_las(coord, feat, pred, new_file_path)
@@ -210,7 +200,7 @@ def inference(model, data_list, cfg):
             lasdata.write(os.path.join(file_dir, file_name +'.las'))
         else:
             # args.source is a folder, so call write_las as usual
-            write_las(coord, feat, pred, os.path.join(args.source, file_name.removesuffix("_2.las")+'_3.las'))
+            #write_las(coord, feat, pred, os.path.join(args.source, file_name + '_semseg.las'))
             
             # Update Classification vaules in las file from prediction results
             lasdata = laspy.read(os.path.join(args.source, file_name))
@@ -231,7 +221,6 @@ if __name__ == '__main__':
     parser.add_argument('--batch_size', type=int, default=2, help='Batch size to use')
     parser.add_argument('--voxel_size', type=float, default=0.03, help='Voxel size used for voxel downsampling')
     parser.add_argument('--mode', type=str, help='Wandb project name', default="test")
-    parser.add_argument('--pointview', type=bool, help='whether to output the results as a point cloud in ply-format or not', default=True)
     parser.add_argument('--pretrained_path', type=str,
                         default="/home/lasse/Git/PointNeXt/log/novafos3d/novafos3d-train-pointnext-xl-ngpus1-seed2696-20230210-150344-2PXLfpA5HQ8UYCXUJSr5gR/checkpoint/novafos3d-train-pointnext-xl-ngpus1-seed2696-20230210-150344-2PXLfpA5HQ8UYCXUJSr5gR_ckpt_best.pth",
                         help='path to a pretrained model'
@@ -243,7 +232,6 @@ if __name__ == '__main__':
     cfg.load(args.cfg, recursive=True)
     cfg.update(opts)  # overwrite the default arguments in yml
     cfg.mode = "test"
-    cfg.pointview = args.pointview
 
     if args.voxel_size is not None:
         cfg.dataset.common.voxel_size = args.voxel_size
@@ -288,13 +276,13 @@ if __name__ == '__main__':
 
     # set_random_seed(cfg.seed + cfg.rank, deterministic=cfg.deterministic)
     torch.backends.cudnn.enabled = True
-    logging.info(cfg)
+    # logging.info(cfg)
 
     if cfg.model.get('in_channels', None) is None:
         cfg.model.in_channels = cfg.model.encoder_args.in_channels
     model = build_model_from_cfg(cfg.model).to(cfg.rank)
     model_size = cal_model_parm_nums(model)
-    logging.info(model)
+    # logging.info(model)
     logging.info('Number of params: %.4f M' % (model_size / 1e6))
 
     best_epoch, best_val = load_checkpoint(model, pretrained_path=cfg.pretrained_path)
