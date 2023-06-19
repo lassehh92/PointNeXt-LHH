@@ -23,13 +23,14 @@ def list_full_paths_las_files(directory):
     file_paths = []
     files = os.listdir(directory)
     for file in files:
-        if file.endswith("_2.las"):
+        if file.endswith(".las"):
             full_path = os.path.join(directory, file)
             file_paths.append(full_path)
     return file_paths
 
 def load_las_data(data_path, cfg):
     las_data = laspy.read(data_path)  # xyzrgb
+    las_data.points = las_data.points[las_data.classification == 0]
     r = las_data.red / 256  # Scale down to 8-bit
     g = las_data.green / 256  
     b = las_data.blue / 256 
@@ -196,8 +197,8 @@ def inference(model, data_list, cfg):
             
             # Update Classification vaules in las file from prediction results
             lasdata = laspy.read(os.path.join(file_dir, file_name + '.las'))
-            lasdata.classification = pred
-            lasdata.write(os.path.join(file_dir, file_name +'.las'))
+            lasdata.points[lasdata.classification == 0] = pred
+            lasdata.write(os.path.join(file_dir, file_name +'_ai.las'))
         else:
             # args.source is a folder, so call write_las as usual
             #write_las(coord, feat, pred, os.path.join(args.source, file_name + '_semseg.las'))
