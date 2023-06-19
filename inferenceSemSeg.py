@@ -197,8 +197,8 @@ def inference(model, data_list, cfg):
             
             # Update Classification vaules in las file from prediction results
             lasdata = laspy.read(os.path.join(file_dir, file_name + '.las'))
-            lasdata.points[lasdata.classification == 0] = pred
-            lasdata.write(os.path.join(file_dir, file_name +'_ai.las'))
+            lasdata.classification[lasdata.classification == 0] = pred
+            lasdata.write(os.path.join(file_dir, file_name +'_ai2.las'))
         else:
             # args.source is a folder, so call write_las as usual
             #write_las(coord, feat, pred, os.path.join(args.source, file_name + '_semseg.las'))
