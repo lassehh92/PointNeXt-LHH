@@ -16,12 +16,34 @@ if __name__ == '__main__':
     parser = argparse.ArgumentParser('Semantic segmentation training script')
     parser.add_argument('--cfg', type=str, required=False, help='config file', default="cfgs/novafos3d/pointnext-xl.yaml")
     parser.add_argument('--deterministic', type=int, help='Whether to run training deterministic', default=1)
+    parser.add_argument('--data_root', type=str, help='Whether to run training deterministic', default="data/Novafos3D/novafos3dfull")
+    parser.add_argument('--radius', type=float, default=0.1, help='Radius of initial set abstraction ball query')
+    parser.add_argument('--batch_size', type=int, default=2, help='Batch size to use')
+    parser.add_argument('--voxel_size', type=float, default=0.03, help='Voxel size used for voxel downsampling')
+    parser.add_argument('--voxel_max', type=float, default=30000, help='subsample the max number of point per point cloud. Set None to use all points.')
+    parser.add_argument('--mode', type=str, default="test")
 
     args, opts = parser.parse_known_args()
     cfg = EasyConfig()
     cfg.load(args.cfg, recursive=True)
     cfg.update(opts)  # overwrite the default arguments in yml
     cfg.deterministic = args.deterministic
+    cfg.mode = args.mode
+
+    if args.voxel_size is not None:
+        cfg.dataset.common.data_root = args.data_root
+
+    if args.batch_size is not None:
+        cfg.batch_size = args.batch_size
+
+    if args.voxel_size is not None:
+        cfg.dataset.common.voxel_size = args.voxel_size
+
+    if args.radius is not None:
+        cfg.model.encoder_args.radius = args.radius
+
+    if args.voxel_max is not None:
+        cfg.dataset.train.voxel_max = args.voxel_max
 
     if cfg.seed is None:
         cfg.seed = np.random.randint(1, 10000)
@@ -39,6 +61,10 @@ if __name__ == '__main__':
         cfg.cfg_basename,  # cfg file name
         f'ngpus{cfg.world_size}',
         f'seed{cfg.seed}',
+        f'batch_size={args.batch_size}'
+        f'voxel_size={args.voxel_size}'
+        f'voxel_max={args.voxel_max}'
+        f'radius={args.radius}'
     ]
     for i, opt in enumerate(opts):
         if 'rank' not in opt and 'dir' not in opt and 'root' not in opt and 'pretrain' not in opt and 'path' not in opt and 'wandb' not in opt and '/' not in opt:
