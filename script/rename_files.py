@@ -5,6 +5,7 @@ import argparse
 # Step 1: Set up argparse to get the directory path
 parser = argparse.ArgumentParser(description='Select 15% of .npy files and rename them.')
 parser.add_argument('directory_path', help='Path to the directory containing .npy files')
+parser.add_argument('--Area', type=int, help='Area number to change to', default=9)
 args = parser.parse_args()
 
 # Step 2: Set the directory path from the argument
@@ -23,7 +24,7 @@ selected_files = random.sample(npy_files, int(len(npy_files) * 0.15))
 # Step 6: Rename the selected files and keep track of the original names
 renamed_files = []
 for i, file_name in enumerate(selected_files, start=1):
-    new_name = f"Area_6_Site_{i}.npy"
+    new_name = f"Area_{args.Area}_Site_{i}.npy"
     os.rename(os.path.join(directory_path, file_name), os.path.join(directory_path, new_name))
     renamed_files.append(file_name)
 
