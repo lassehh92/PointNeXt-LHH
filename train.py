@@ -57,9 +57,9 @@ if __name__ == '__main__':
         cfg.cfg_basename,  # cfg file name
         f'ngpus{cfg.world_size}',
         f'seed{cfg.seed}',
-        f'batch_size={args.batch_size}'
-        f'voxel_size={args.voxel_size}'
-        f'voxel_max={args.voxel_max}'
+        f'batch_size={args.batch_size}',
+        f'voxel_size={args.voxel_size}',
+        f'voxel_max={args.voxel_max}',
         f'radius={args.radius}'
     ]
     for i, opt in enumerate(opts):
