@@ -16,7 +16,6 @@ if __name__ == '__main__':
     parser = argparse.ArgumentParser('Semantic segmentation training script')
     parser.add_argument('--cfg', type=str, required=False, help='config file', default="cfgs/novafos3d/pointnext-xl.yaml")
     parser.add_argument('--deterministic', type=int, help='Whether to run training deterministic', default=1)
-    parser.add_argument('--data_root', type=str, help='Whether to run training deterministic', default="data/Novafos3D/novafos3dfull")
     parser.add_argument('--radius', type=float, default=0.1, help='Radius of initial set abstraction ball query')
     parser.add_argument('--batch_size', type=int, default=2, help='Batch size to use')
     parser.add_argument('--voxel_size', type=float, default=0.03, help='Voxel size used for voxel downsampling')
@@ -29,9 +28,6 @@ if __name__ == '__main__':
     cfg.update(opts)  # overwrite the default arguments in yml
     cfg.deterministic = args.deterministic
     cfg.mode = args.mode
-
-    if args.voxel_size is not None:
-        cfg.dataset.common.data_root = args.data_root
 
     if args.batch_size is not None:
         cfg.batch_size = args.batch_size
