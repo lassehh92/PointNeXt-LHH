@@ -189,8 +189,7 @@ if __name__ == '__main__':
     parser.add_argument('--mode', type=str, help='Wandb project name', default="test")
     parser.add_argument('--pretrained_path', type=str,
                         default="/home/lasse/Git/PointNeXt/log/novafos3d/novafos3d-train-pointnext-xl-ngpus1-seed2696-20230210-150344-2PXLfpA5HQ8UYCXUJSr5gR/checkpoint/novafos3d-train-pointnext-xl-ngpus1-seed2696-20230210-150344-2PXLfpA5HQ8UYCXUJSr5gR_ckpt_best.pth",
-                        help='path to a pretrained model'
-                        )
+                        help='path to a pretrained model')
 
     args, opts = parser.parse_known_args()
 

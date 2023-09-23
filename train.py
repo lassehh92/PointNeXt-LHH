@@ -20,8 +20,11 @@ if __name__ == '__main__':
     parser.add_argument('--batch_size', type=int, default=2, help='Batch size to use')
     parser.add_argument('--voxel_size', type=float, default=0.03, help='Voxel size used for voxel downsampling')
     parser.add_argument('--voxel_max', type=float, default=30000, help='subsample the max number of point per point cloud. Set None to use all points.')
-    parser.add_argument('--mode', type=str, default="test")
-
+    parser.add_argument('--mode', type=str, default="train")
+    parser.add_argument('--pretrained_path', type=str,
+                        default="/home/lasse/Git/PointNeXt/log/novafos3d/novafos3d-train-pointnext-xl-ngpus1-seed2696-20230210-150344-2PXLfpA5HQ8UYCXUJSr5gR/checkpoint/novafos3d-train-pointnext-xl-ngpus1-seed2696-20230210-150344-2PXLfpA5HQ8UYCXUJSr5gR_ckpt_best.pth",
+                        help='path to a pretrained model')
+    
     args, opts = parser.parse_known_args()
     cfg = EasyConfig()
     cfg.load(args.cfg, recursive=True)
@@ -43,6 +46,9 @@ if __name__ == '__main__':
 
     if cfg.seed is None:
         cfg.seed = np.random.randint(1, 10000)
+
+    assert args.pretrained_path is not None, "Make sure to specify path to pretrained model"
+    cfg.pretrained_path = args.pretrained_path
 
     # init distributed env first, since logger depends on the dist info.
     cfg.rank, cfg.world_size, cfg.distributed, cfg.mp = dist_utils.get_dist_info(cfg)
@@ -80,6 +86,24 @@ if __name__ == '__main__':
         yaml.dump(cfg, f, indent=2)
         os.system('cp %s %s' % (args.cfg, cfg.run_dir))
     cfg.cfg_path = cfg_path
+
+    # # logger
+    # setup_logger_dist(cfg.log_path, cfg.rank, name=cfg.dataset.common.NAME)
+
+    # # set_random_seed(cfg.seed + cfg.rank, deterministic=cfg.deterministic)
+    # torch.backends.cudnn.enabled = True
+    # # logging.info(cfg)
+
+    # if cfg.model.get('in_channels', None) is None:
+    #     cfg.model.in_channels = cfg.model.encoder_args.in_channels
+    # model = build_model_from_cfg(cfg.model).to(cfg.rank)
+    # model_size = cal_model_parm_nums(model)
+    # # logging.info(model)
+    # logging.info('Number of params: %.4f M' % (model_size / 1e6))
+
+    # best_epoch, best_val = load_checkpoint(model, pretrained_path=cfg.pretrained_path)
+
+    # logging.info(f'Testing model {os.path.basename(cfg.pretrained_path)}...')
 
     # wandb config
     cfg.wandb.name = cfg.run_name
