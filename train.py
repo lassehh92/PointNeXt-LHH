@@ -21,6 +21,7 @@ if __name__ == '__main__':
     parser.add_argument('--voxel_size', type=float, default=0.03, help='Voxel size used for voxel downsampling')
     parser.add_argument('--voxel_max', type=float, default=30000, help='subsample the max number of point per point cloud. Set None to use all points.')
     parser.add_argument('--mode', type=str, default="train")
+    parser.add_argument('--epochs', type=int, default=50, help="Epochs to use")
     parser.add_argument('--pretrained_path', type=str,
                         default="/home/lasse/Git/PointNeXt/log/novafos3d/novafos3d-train-pointnext-xl-ngpus1-seed2696-20230210-150344-2PXLfpA5HQ8UYCXUJSr5gR/checkpoint/novafos3d-train-pointnext-xl-ngpus1-seed2696-20230210-150344-2PXLfpA5HQ8UYCXUJSr5gR_ckpt_best.pth",
                         help='path to a pretrained model')
@@ -46,6 +47,9 @@ if __name__ == '__main__':
 
     if cfg.seed is None:
         cfg.seed = np.random.randint(1, 10000)
+
+    if cfg.epochs is not None:
+        cfg.epochs = args.epochs
 
     assert args.pretrained_path is not None, "Make sure to specify path to pretrained model"
     cfg.pretrained_path = args.pretrained_path
