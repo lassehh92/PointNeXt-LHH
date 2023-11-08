@@ -7,7 +7,7 @@
 
 import torch
 
-import chamfer
+#import chamfer
 
 
 class ChamferFunction(torch.autograd.Function):
