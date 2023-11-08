@@ -1,13 +1,13 @@
 # data augmentation
 dataset:
   common:
-    NAME: S3DIS
-    data_root: data/S3DIS/stanford_indoor3d_finetune
-    test_area: 5
-    voxel_size: 0.04
+    NAME: Novafos3D
+    data_root: data/OpenTrench3D/trainval
+    test_area: 1
+    voxel_size: 0.04 # 0.04 is to much. Start try with 0.01 0.015 0.02
   train:
     split: train
-    voxel_max: 24000
+    voxel_max: 30000 #30000 #24000 # I suspect 24000 may be to low, but we go with it for now ... 
     loop: 30  # here, the training has been looped 30 times. therefore, the training epochs do not need much.
     presample: False
   val:
@@ -20,7 +20,7 @@ dataset:
     presample: False 
 
 feature_keys: x,heights
-num_classes: 13
+num_classes: 3
 batch_size: 32
 val_batch_size: 1
 
@@ -44,9 +44,9 @@ datatransforms:
 # ---------------------------------------------------------------------------- #
 val_fn: validate
 ignore_index: null 
-epochs: 30
+epochs: 50
 
-cls_weighed_loss: False
+cls_weighed_loss: False #before true, calcualte overall points pr class and set in novafos3d.py 
 
 criterion_args:
   NAME: CrossEntropy
@@ -68,9 +68,9 @@ use_voting: False
 # ---------------------------------------------------------------------------- #
 # io and misc
 # ---------------------------------------------------------------------------- #
-log_dir: 's3dis'
+log_dir: 'opentrench3d'
 save_freq: -1 # save epoch every xxx epochs, -1 only save last and best. 
 val_freq: 1
 
 wandb:
-  project: PointNeXt-S3DIS
+  project: PointNeXt-OpenTrench3D

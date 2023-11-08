@@ -14,7 +14,7 @@ from examples.segmentation.main import main as segmentation_main
 if __name__ == '__main__':
 
     parser = argparse.ArgumentParser('Semantic segmentation training script')
-    parser.add_argument('--cfg', type=str, required=False, help='config file', default="cfgs/novafos3d/pointnext-xl.yaml")
+    parser.add_argument('--cfg', type=str, help='config file', default="cfgs/novafos3d/pointnext-xl.yaml")
     parser.add_argument('--deterministic', type=int, help='Whether to run training deterministic', default=1)
     parser.add_argument('--radius', type=float, default=0.1, help='Radius of initial set abstraction ball query')
     parser.add_argument('--batch_size', type=int, default=2, help='Batch size to use')
@@ -23,8 +23,10 @@ if __name__ == '__main__':
     parser.add_argument('--mode', type=str, default="train")
     parser.add_argument('--epochs', type=int, default=50, help="Epochs to use")
     parser.add_argument('--pretrained_path', type=str,
-                        default="/home/lasse/Git/PointNeXt/log/novafos3d/novafos3d-train-pointnext-xl-ngpus1-seed2696-20230210-150344-2PXLfpA5HQ8UYCXUJSr5gR/checkpoint/novafos3d-train-pointnext-xl-ngpus1-seed2696-20230210-150344-2PXLfpA5HQ8UYCXUJSr5gR_ckpt_best.pth",
                         help='path to a pretrained model')
+    
+
+    # default="/home/lasse/Git/PointNeXt/log/novafos3d/novafos3d-train-pointnext-xl-ngpus1-seed2696-20230210-150344-2PXLfpA5HQ8UYCXUJSr5gR/checkpoint/novafos3d-train-pointnext-xl-ngpus1-seed2696-20230210-150344-2PXLfpA5HQ8UYCXUJSr5gR_ckpt_best.pth",
     
     args, opts = parser.parse_known_args()
     cfg = EasyConfig()
@@ -51,8 +53,8 @@ if __name__ == '__main__':
     if cfg.epochs is not None:
         cfg.epochs = args.epochs
 
-    assert args.pretrained_path is not None, "Make sure to specify path to pretrained model"
-    cfg.pretrained_path = args.pretrained_path
+    # assert args.pretrained_path is not None, "Make sure to specify path to pretrained model"
+    # cfg.pretrained_path = args.pretrained_path
 
     # init distributed env first, since logger depends on the dist info.
     cfg.rank, cfg.world_size, cfg.distributed, cfg.mp = dist_utils.get_dist_info(cfg)
