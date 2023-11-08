@@ -5,10 +5,10 @@ for profiling the parameters, flops, speed of a model
 usage example: 
 
 1. profile pointnext-s on scanobjectnn using 128 * 1024 points as input
-CUDA_VISIBLE_DEVICES=1 python examples/profile.py --cfg cfgs/scanobjectnn/pointnext-s.yaml batch_size=128 num_points=1024 timing=True
+CUDA_VISIBLE_DEVICES=0 python examples/profile.py --cfg cfgs/scanobjectnn/pointnext-s.yaml batch_size=128 num_points=1024 timing=True
 
 2. profile all models for scanobjectnn classification using 128 * 1024 points as input
-CUDA_VISIBLE_DEVICES=1 python examples/profile.py --cfg cfgs/scanobjectnn batch_size=128 num_points=1024 timing=True
+CUDA_VISIBLE_DEVICES=0 python examples/profile.py --cfg cfgs/scanobjectnn batch_size=128 num_points=1024 timing=True
 """
 import os, sys, argparse, time, warnings
 import torch
@@ -63,7 +63,9 @@ def profile_model(model, cfg):
             ignore_modules=None)  # the list of modules to ignore in the profiling
         print(f'Batches\tnpoints\tParams.(M)\tGFLOPs')
         print(f'{cfg.batch_size}\t{N}\t{params / 1e6: .3f}\t{flops / (float(B) * 1e9): .2f}')
-
+    else:
+        warnings.warn('set flops=True to calculate flops')
+        
     if cfg.get('timing', False):
         B = cfg.batch_size
         if cfg.variable:
@@ -97,6 +99,9 @@ def profile_model(model, cfg):
             time_taken = time.time() - start_time
         n_batches = n_runs * B
         print(f'Throughput (ins./s): {float(n_batches) / float(time_taken)}')
+
+    else:
+        warnings.warn('set timing=True to calculate inference time')
 
 
 @torch.no_grad()

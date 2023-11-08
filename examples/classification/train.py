@@ -3,7 +3,7 @@ from tqdm import tqdm
 import torch, torch.nn as nn
 from torch import distributed as dist
 from torch.utils.tensorboard import SummaryWriter
-from openpoints.utils import set_random_seed, save_checkpoint, load_checkpoint, resume_checkpoint, setup_logger_dist, \
+from openpoints.utils import set_random_seed, save_checkpoint, load_checkpoint, load_checkpoint_inv, resume_checkpoint, setup_logger_dist, \
     cal_model_parm_nums, Wandb
 from openpoints.utils import AverageMeter, ConfusionMatrix, get_mious
 from openpoints.dataset import build_dataloader_from_cfg
@@ -54,7 +54,7 @@ def main(gpu, cfg, profile=False):
         dist.init_process_group(backend=cfg.dist_backend,
                                 init_method=cfg.dist_url,
                                 world_size=cfg.world_size,
-                                rank=cfg.rank) 
+                                rank=cfg.rank)
         dist.barrier()
     # logger
     setup_logger_dist(cfg.log_path, cfg.rank, name=cfg.dataset.common.NAME)
@@ -66,7 +66,7 @@ def main(gpu, cfg, profile=False):
     set_random_seed(cfg.seed + cfg.rank, deterministic=cfg.deterministic)
     torch.backends.cudnn.enabled = True
     logging.info(cfg)
-    
+
     if not cfg.model.get('criterion_args', False):
         cfg.model.criterion_args = cfg.criterion_args
     model = build_model_from_cfg(cfg.model).to(cfg.rank)
@@ -148,6 +148,10 @@ def main(gpu, cfg, profile=False):
                 # finetune the whole model
                 logging.info(f'Finetuning from {cfg.pretrained_path}')
                 load_checkpoint(model.encoder, cfg.pretrained_path)
+            elif cfg.mode == 'finetune_encoder_inv':
+                # finetune the whole model
+                logging.info(f'Finetuning from {cfg.pretrained_path}')
+                load_checkpoint_inv(model.encoder, cfg.pretrained_path)
     else:
         logging.info('Training from scratch')
     train_loader = build_dataloader_from_cfg(cfg.batch_size,
@@ -237,7 +241,7 @@ def train_one_epoch(model, train_loader, optimizer, scheduler, epoch, cfg):
         points = data['x']
         target = data['y']
         """ bebug
-        from openpoints.dataset import vis_points 
+        from openpoints.dataset import vis_points
         vis_points(data['pos'].cpu().numpy()[0])
         """
         num_curr_pts = points.shape[1]

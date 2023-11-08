@@ -23,12 +23,10 @@ conda env remove --name openpoints
 conda create -n openpoints -y python=3.7 numpy=1.20 numba
 conda activate openpoints
 
+# please always double check installation for pytorch and torch-scatter from the official documentation
 conda install -y pytorch=1.10.1 torchvision cudatoolkit=11.3 -c pytorch -c nvidia
-
-# install relevant packages
-# torch-scatter is a must, and others are optional
 pip install torch-scatter -f https://data.pyg.org/whl/torch-1.10.1+cu113.html
-# pip install torch-scatter torch-sparse torch-cluster torch-geometric -f https://data.pyg.org/whl/torch-1.10.1+cu113.html
+
 pip install -r requirements.txt
 
 # install cpp extensions, the pointnet++ library
@@ -46,7 +44,6 @@ cd ..
 cd pointops/
 python setup.py install
 cd ..
-
 
 # Blow are functions that optional. Necessary only if interested in reconstruction tasks such as completion
 cd chamfer_dist

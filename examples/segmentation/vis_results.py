@@ -1,7 +1,6 @@
 #!/usr/bin/env python
 # coding: utf-8
-
-import numpy as np
+import __init__
 import os
 
 

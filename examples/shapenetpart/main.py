@@ -169,15 +169,15 @@ def main(gpu, cfg):
         if cfg.mode == 'resume':
             resume_checkpoint(cfg, model, optimizer, scheduler,
                               pretrained_path=cfg.pretrained_path)
-            metrics, cls_mious = validate_fn(
-                val_loader, model, cfg)
-            val_miou = metrics['ins_miou']
-            logging.info(f'\nresume val miou is {val_miou}\n ')
+            test_ins_miou, test_cls_miou, test_cls_mious = validate_fn(model, val_loader, cfg,
+                                                                            num_votes=cfg.num_votes,
+                                                                            data_transform=voting_transform
+                                                                            )
+
+            logging.info(f'\nresume val instance mIoU is {test_ins_miou}, val class mIoU is {test_cls_miou} \n ')
         else:
             if cfg.mode in ['val', 'test']:
                 load_checkpoint(model, pretrained_path=cfg.pretrained_path)
-                # for i in range(11, 15):
-                    # print("voting for {} times:".format(i))
                 test_ins_miou, test_cls_miou, test_cls_mious = validate_fn(model, val_loader, cfg,
                                                                             num_votes=cfg.num_votes,
                                                                             data_transform=voting_transform
@@ -412,10 +412,13 @@ if __name__ == "__main__":
         f'ngpus{cfg.world_size}',
         f'seed{cfg.seed}',
     ]
+    opt_list = [] # for checking experiment configs from logging file
     for i, opt in enumerate(opts):
-        if 'rank' not in opt and 'dir' not in opt and 'root' not in opt and 'path' not in opt and 'wandb' not in opt and '/' not in opt:
-            tags.append(opt)
+        if 'rank' not in opt and 'dir' not in opt and 'root' not in opt and 'pretrain' not in opt and 'path' not in opt and 'wandb' not in opt and '/' not in opt:
+            opt_list.append(opt)
     cfg.root_dir = os.path.join(cfg.root_dir, cfg.task_name)
+    cfg.opts = '-'.join(opt_list)
+
     cfg.is_training = cfg.mode not in ['test', 'testing', 'val', 'eval', 'evaluation']
 
     if cfg.mode in ['resume', 'test', 'val']:
