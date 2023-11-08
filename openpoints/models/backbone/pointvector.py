@@ -1,15 +1,27 @@
-"""Official implementation of PointNext
-PointNeXt: Revisiting PointNet++ with Improved Training and Scaling Strategies
-https://arxiv.org/abs/2206.04670
-Guocheng Qian, Yuchen Li, Houwen Peng, Jinjie Mai, Hasan Abed Al Kader Hammoud, Mohamed Elhoseiny, Bernard Ghanem
+"""Official implementation of PointVector
+PointVector: A Vector Representation In Point Cloud Analysis
+https://arxiv.org/pdf/2205.10528v3.pdf
+Xin Deng* WenYu Zhang* Qing Ding† XinMing Zhang†
+University of Science and Technology of China
 """
+from asyncio import FastChildWatcher
+from audioop import bias
+from imaplib import Internaldate2tuple
+import nntplib
+from textwrap import indent
+# from tkinter import Pack
+# from turtle import pos
 from typing import List, Type
 import logging
+from ..layers.conv import Conv1d
+from numpy import pi
+import numpy
 import torch
 import torch.nn as nn
+import torch.nn.functional as F
 from ..build import MODELS
 from ..layers import create_convblock1d, create_convblock2d, create_act, CHANNEL_MAP, \
-    create_grouper, furthest_point_sample, random_sample, three_interpolation, get_aggregation_feautres
+    create_grouper, furthest_point_sample, random_sample, three_interpolation
 
 
 def get_reduction_fn(reduction):
@@ -24,7 +36,54 @@ def get_reduction_fn(reduction):
     return pool
 
 
+def get_aggregation_feautres(p, dp, f, fj, feature_type='dp_fj'):
+    if feature_type == 'dp_fj':
+        fj = torch.cat([dp, fj], 1)
+    elif feature_type == 'dp_fj_df':
+        df = fj - f.unsqueeze(-1)
+        fj = torch.cat([dp, fj, df], 1)
+    elif feature_type == 'pi_dp_fj_df':
+        df = fj - f.unsqueeze(-1)
+        fj = torch.cat([p.transpose(1, 2).unsqueeze(-1).expand(-1, -1, -1, df.shape[-1]), dp, fj, df], 1)
+    elif feature_type == 'dp_df':
+        df = fj - f.unsqueeze(-1)
+        fj = torch.cat([dp, df], 1)
+    return fj
+
+
 class LocalAggregation(nn.Module):
+    """Local aggregation layer for a set 
+    Set abstraction layer abstracts features from a larger set to a smaller set
+    Local aggregation layer aggregates features from the same set
+    """
+
+    def __init__(self,
+                 channels: List[int],
+                 norm_args={'norm': 'bn1d'},
+                 act_args={'act': 'relu'},
+                 group_args={'NAME': 'ballquery', 'radius': 0.1, 'nsample': 16},
+                 conv_args=None,
+                 feature_type='dp_fj',
+                 reduction='max',
+                 last_act=True,
+                 **kwargs
+                 ):
+        super().__init__()
+        if kwargs:
+            logging.warning(f"kwargs: {kwargs} are not used in {__class__.__name__}")
+        group_args['nsample']=8
+        self.vpsa=VPSA(channels[0],channels[-1],flag=1)
+        self.grouper = create_grouper(group_args)
+        self.feature_type = feature_type
+
+    def forward(self, pf) -> torch.Tensor:
+        p, f = pf
+        dp, fj = self.grouper(p, p, f)
+        f = self.vpsa(dp,f,fj)
+        return f
+
+
+class Local(nn.Module):
     """Local aggregation layer for a set 
     Set abstraction layer abstracts features from a larger set to a smaller set
     Local aggregation layer aggregates features from the same set
@@ -76,8 +135,6 @@ class LocalAggregation(nn.Module):
                 f'query size: {query_xyz.shape}, support size: {support_xyz.shape}, radius: {radius}, num_neighbors: {points}')
         DEBUG end """
         return f
-
-
 class SetAbstraction(nn.Module):
     """The modified set abstraction module in PointNet++ with residual connection support
     """
@@ -170,6 +227,98 @@ class SetAbstraction(nn.Module):
         return p, f
 
 
+class SetAbstractioncls(nn.Module):
+    """The modified set abstraction module in PointNet++ with residual connection support
+    """
+
+    def __init__(self,
+                 in_channels, out_channels,
+                 layers=1,
+                 stride=1,
+                 group_args={'NAME': 'ballquery',
+                             'radius': 0.1, 'nsample': 16},
+                 norm_args={'norm': 'bn1d'},
+                 act_args={'act': 'relu'},
+                 conv_args=None,
+                 sampler='fps',
+                 feature_type='dp_fj',
+                 use_res=False,
+                 is_head=False,
+                 flag=0,
+                 **kwargs, 
+                 ):
+        super().__init__()
+        self.stride = stride
+        self.is_head = is_head
+        self.all_aggr = not is_head and stride == 1
+        self.use_res = use_res and not self.all_aggr and not self.is_head
+        self.feature_type = feature_type
+        self.flag=flag
+
+        mid_channel = out_channels // 2 if stride > 1 else out_channels
+        channels = [in_channels] + [mid_channel] * \
+                   (layers - 1) + [out_channels]
+        channels[0] = in_channels if is_head else CHANNEL_MAP[feature_type](channels[0])
+
+        # actually, one can use local aggregation layer to replace the following
+        create_conv = create_convblock1d if is_head else create_convblock2d
+        if self.all_aggr :
+            convs = []
+            for i in range(len(channels) - 1):
+                convs.append(create_conv(channels[i], channels[i + 1],
+                                        norm_args=norm_args if not is_head else None,
+                                        act_args=None if i == len(channels) - 2
+                                                        and (self.use_res or is_head) else act_args,
+                                        **conv_args)
+                            )
+            self.convs = nn.Sequential(*convs)
+        elif is_head:
+            self.convs=nn.Conv1d(channels[0],channels[-1],1,1)
+        else:
+            self.convs=VPSA(channels[0]-3,channels[-1],self.flag)
+        if not is_head:
+            if self.all_aggr:
+                group_args.nsample = None
+                group_args.radius = None
+                self.pool = lambda x: torch.max(x, dim=-1, keepdim=False)[0]
+            self.grouper = create_grouper(group_args)
+            
+            if sampler.lower() == 'fps':
+                self.sample_fn = furthest_point_sample
+            elif sampler.lower() == 'random':
+                self.sample_fn = random_sample
+
+    def forward(self, pf):
+        p, f = pf
+        if self.is_head:
+            f = self.convs(f)  # (n, c)
+        else:
+            if not self.all_aggr:
+                idx = self.sample_fn(p, p.shape[1] // self.stride).long()
+                new_p = torch.gather(p, 1, idx.unsqueeze(-1).expand(-1, -1, 3))
+            else:
+                new_p = p
+            """ DEBUG neighbor numbers. 
+            query_xyz, support_xyz = new_p, p
+            radius = self.grouper.radius
+            dist = torch.cdist(query_xyz.cpu(), support_xyz.cpu())
+            points = len(dist[dist < radius]) / (dist.shape[0] * dist.shape[1])
+            logging.info(f'query size: {query_xyz.shape}, support size: {support_xyz.shape}, radius: {radius}, num_neighbors: {points}')
+            DEBUG end """
+            if self.use_res or 'df' in self.feature_type:
+                fi = torch.gather(
+                    f, -1, idx.unsqueeze(1).expand(-1, f.shape[1], -1))
+            else:
+                fi = None
+            dp, fj = self.grouper(new_p, p, f)
+            
+            if self.use_res:
+                f=self.convs(dp,fi,fj)
+            else:
+                fj = get_aggregation_feautres(new_p, dp, fi, fj, feature_type=self.feature_type)
+                f = self.pool(self.convs(fj))
+            p = new_p
+        return p, f
 class FeaturePropogation(nn.Module):
     """The Feature Propogation module in PointNet++
     """
@@ -226,6 +375,64 @@ class FeaturePropogation(nn.Module):
         return f
 
 
+class VPSA(nn.Module):
+    def __init__(self,channel,out_channel,flag=0):
+        super().__init__()
+        self.channel=channel
+        # self.drop=nn.Dropout(proj_drop)
+        self.theta_x_alpha=nn.Sequential(nn.Conv2d(channel,channel,1,1,bias=False),nn.BatchNorm2d(channel),nn.ReLU(inplace=True))
+        self.theta_x_beta=nn.Sequential(nn.Conv2d(channel,channel,1,1,bias=False),nn.BatchNorm2d(channel),nn.ReLU(inplace=True))
+        self.z_x=nn.Conv2d(channel,channel,kernel_size=1,bias=False)
+        self.flag=flag
+        if flag==0:
+            self.relu=nn.LeakyReLU(0.2,inplace=True)
+            self.lrlu=nn.LeakyReLU(0.2,inplace=True)#leakyrelu is better for scanobjectnn
+            self.tf_zx=nn.Sequential(nn.Conv1d(channel*3,channel,kernel_size=1,stride=1,groups=channel,bias=False),nn.BatchNorm1d(channel),nn.LeakyReLU(0.2,inplace=True))
+        else:
+            self.tf_zx=nn.Sequential(nn.Conv1d(channel*3,channel,kernel_size=1,stride=1,groups=channel,bias=False),nn.BatchNorm1d(channel))
+            self.relu=nn.ReLU(inplace=True)
+            self.lrlu=nn.ReLU(inplace=True)
+        if flag !=1:
+            self.bn1=nn.BatchNorm2d(channel) # bn is better for partseg task
+        else:
+            self.bn1=nn.Identity()
+        self.result=nn.Sequential(nn.Conv1d(channel,out_channel,1,1,bias=False),nn.BatchNorm1d(out_channel))
+        self.pos_x=nn.Sequential(nn.Conv2d(3,channel,1,1,bias=False),nn.BatchNorm2d(channel))
+        self.residual=nn.Sequential(nn.Conv1d(channel,out_channel,1,1,bias=False),nn.BatchNorm1d(out_channel))
+
+    def forward(self,position,identity,y):# y b,d,g,1
+        b,_,g,k=y.shape
+        residual=identity
+        position=self.pos_x(position)
+
+        y=self.bn1(y-identity.unsqueeze(-1))
+
+        del identity
+        y=y+position
+        y=self.relu(y)
+        del position
+        theta_x_alpha=self.theta_x_alpha(y)
+        theta_x_beta=self.theta_x_beta(y)
+        zx=self.z_x(y)
+        del y
+        zx=torch.cat([zx*torch.sin(theta_x_beta)*torch.cos(theta_x_alpha),zx*torch.sin(theta_x_beta)*torch.sin(theta_x_alpha),zx*torch.cos(theta_x_beta)],dim=-2).reshape(b,-1,g,k)#b,out*3,g
+
+        del theta_x_alpha
+        del theta_x_beta
+        if self.flag==1:
+            zx=torch.sum(zx,dim=-1,keepdim=False)
+        else:
+            zx=torch.max(zx,dim=-1,keepdim=False)[0]
+        
+        zx=self.tf_zx(zx)#b,d,g,1
+
+        zx=self.result(zx)
+        residual=self.residual(residual)
+        zx=zx+residual
+        del residual
+        zx=self.lrlu(zx)
+
+        return zx
 class InvResMLP(nn.Module):
     def __init__(self,
                  in_channels,
@@ -242,39 +449,16 @@ class InvResMLP(nn.Module):
                  ):
         super().__init__()
         self.use_res = use_res
-        mid_channels = int(in_channels * expansion)
         self.convs = LocalAggregation([in_channels, in_channels],
                                       norm_args=norm_args, act_args=act_args if num_posconvs > 0 else None,
                                       group_args=group_args, conv_args=conv_args,
                                       **aggr_args, **kwargs)
-        if num_posconvs < 1:
-            channels = []
-        elif num_posconvs == 1:
-            channels = [in_channels, in_channels]
-        else:
-            channels = [in_channels, mid_channels, in_channels]
-        pwconv = []
-        # point wise after depth wise conv (without last layer)
-        for i in range(len(channels) - 1):
-            pwconv.append(create_convblock1d(channels[i], channels[i + 1],
-                                             norm_args=norm_args,
-                                             act_args=act_args if
-                                             (i != len(channels) - 2) and not less_act else None,
-                                             **conv_args)
-                          )
-        self.pwconv = nn.Sequential(*pwconv)
-        self.act = create_act(act_args)
+
 
     def forward(self, pf):
         p, f = pf
-        identity = f
         f = self.convs([p, f])
-        f = self.pwconv(f)
-        if f.shape[-1] == identity.shape[-1] and self.use_res:
-            f += identity
-        f = self.act(f)
         return [p, f]
-
 
 class ResBlock(nn.Module):
     def __init__(self,
@@ -308,13 +492,8 @@ class ResBlock(nn.Module):
 
 
 @MODELS.register_module()
-class PointNextEncoder(nn.Module):
-    r"""The Encoder for PointNext 
-    `"PointNeXt: Revisiting PointNet++ with Improved Training and Scaling Strategies".
-    <https://arxiv.org/abs/2206.04670>`_.
-    .. note::
-        For an example of using :obj:`PointNextEncoder`, see
-        `examples/segmentation/main.py <https://github.com/guochengqian/PointNeXt/blob/master/cfgs/s3dis/README.md>`_.
+class PointVectorEncoder(nn.Module):
+    """
     Args:
         in_channels (int, optional): input channels . Defaults to 4.
         width (int, optional): width of network, the output mlp of the stem MLP. Defaults to 32.
@@ -344,6 +523,7 @@ class PointNextEncoder(nn.Module):
                  group_args: dict = {'NAME': 'ballquery'},
                  sa_layers: int = 1,
                  sa_use_res: bool = False,
+                 flag: int =1,
                  **kwargs
                  ):
         super().__init__()
@@ -360,6 +540,7 @@ class PointNextEncoder(nn.Module):
         self.expansion = kwargs.get('expansion', 4)
         self.sa_layers = sa_layers
         self.sa_use_res = sa_use_res
+        self.flag= flag
         self.use_res = kwargs.get('use_res', True)
         radius_scaling = kwargs.get('radius_scaling', 2)
         nsample_scaling = kwargs.get('nsample_scaling', 1)
@@ -412,12 +593,21 @@ class PointNextEncoder(nn.Module):
         nsample = group_args.nsample
         group_args.radius = radii[0]
         group_args.nsample = nsample[0]
-        layers.append(SetAbstraction(self.in_channels, channels,
+        if self.flag == 1:
+            layers.append(SetAbstraction(self.in_channels, channels,
                                      self.sa_layers if not is_head else 1, stride,
                                      group_args=group_args,
                                      sampler=self.sampler,
                                      norm_args=self.norm_args, act_args=self.act_args, conv_args=self.conv_args,
                                      is_head=is_head, use_res=self.sa_use_res, **self.aggr_args 
+                                     ))
+        else:
+            layers.append(SetAbstractioncls(self.in_channels, channels,
+                                     self.sa_layers if not is_head else 1, stride,
+                                     group_args=group_args,
+                                     sampler=self.sampler,
+                                     norm_args=self.norm_args, act_args=self.act_args, conv_args=self.conv_args,
+                                     is_head=is_head, use_res=self.sa_use_res,flag=self.flag, **self.aggr_args 
                                      ))
         self.in_channels = channels
         for i in range(1, blocks):
@@ -457,7 +647,7 @@ class PointNextEncoder(nn.Module):
 
 
 @MODELS.register_module()
-class PointNextDecoder(nn.Module):
+class PointVectorDecoder(nn.Module):
     def __init__(self,
                  encoder_channel_list: List[int],
                  decoder_layers: int = 2,
@@ -497,7 +687,7 @@ class PointNextDecoder(nn.Module):
 
 
 @MODELS.register_module()
-class PointNextPartDecoder(nn.Module):
+class PointVectorPartDecoder(nn.Module):
     def __init__(self,
                  encoder_channel_list: List[int],
                  decoder_layers: int = 2,

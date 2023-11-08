@@ -7,6 +7,24 @@ Color Reference: https://colorbrewer2.org/
 """
 
 
+# Qualitative_color_map =[
+# #a6cee3
+# #1f78b4
+# #b2df8a
+# #33a02c
+# #fb9a99
+# #e31a1c
+# #fdbf6f
+# #ff7f00
+# #cab2d6
+# #6a3d9a
+# #ffff99
+# #b15928
+#
+#
+# ]
+
+
 def vis_points(points, colors=None, labels=None, color_map='Paired', opacity=1.0, point_size=5.0):
     """Visualize a point cloud
     Note about direction in the visualization:  x: horizontal right (red arrow), y: vertical up (green arrow), and z: inside (blue arrow)
@@ -86,15 +104,12 @@ def vis_multi_points(points, colors=None, labels=None,
                 colors[i] = np.array((colors[i] - colors[i].min) / (colors[i].max() - colors[i].min()) *255).astype(np.int8)
                 
         plotter.add_points(points[i], opacity=opacity, point_size=point_size, render_points_as_spheres=True, scalars=colors[i], rgb=True)
-    plotter.link_views()
+    # plotter.link_views() # pyvista might have bug for linked_views. Comment this line out if you cannot see the visualzation result.
     if save_fig:
-        # plotter.show(auto_close=False)
-        # plotter.screenshot(filename=f'{save_name}.png')
-        plotter.show(screenshot='airplane.png')
+        plotter.show(screenshot=f'{save_name}.png')
         plotter.close()
     else:
         plotter.show()
-        plotter.close()
     
 
 def vis_neighbors(points, neighbor_points, point_index, 

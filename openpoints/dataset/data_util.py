@@ -181,7 +181,7 @@ def get_features_by_keys(data, keys='pos,x'):
     else:
         return torch.cat([data[key] for key in keys.split(',')], -1).transpose(1,2).contiguous()
 
-# find ud af hvad det her gør
+
 def get_class_weights(num_per_class, normalize=False):
     weight = num_per_class / float(sum(num_per_class))
     ce_label_weight = 1 / (weight + 0.02)
