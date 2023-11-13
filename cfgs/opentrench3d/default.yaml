@@ -2,8 +2,8 @@
 dataset:
   common:
     NAME: Novafos3D
-    data_root: data/OpenTrench3D/trainval
-    test_area: 1
+    data_root: data/Novafos3D/UU3D
+    test_area: 7
     voxel_size: 0.04 # 0.04 is to much. Start try with 0.01 0.015 0.02
   train:
     split: train
@@ -73,4 +73,4 @@ save_freq: -1 # save epoch every xxx epochs, -1 only save last and best.
 val_freq: 1
 
 wandb:
-  project: PointNeXt-OpenTrench3D
+  project: OpenTrench3D

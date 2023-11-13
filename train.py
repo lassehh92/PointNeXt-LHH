@@ -53,8 +53,8 @@ if __name__ == '__main__':
     if cfg.epochs is not None:
         cfg.epochs = args.epochs
 
-    # assert args.pretrained_path is not None, "Make sure to specify path to pretrained model"
-    # cfg.pretrained_path = args.pretrained_path
+    assert args.pretrained_path is not None, "Make sure to specify path to pretrained model"
+    cfg.pretrained_path = args.pretrained_path
 
     # init distributed env first, since logger depends on the dist info.
     cfg.rank, cfg.world_size, cfg.distributed, cfg.mp = dist_utils.get_dist_info(cfg)
@@ -82,7 +82,7 @@ if __name__ == '__main__':
     cfg.is_training = cfg.mode not in ['test', 'testing', 'val', 'eval', 'evaluation']
     if cfg.mode in ['resume', 'val', 'test']:
         resume_exp_directory(cfg, pretrained_path=cfg.pretrained_path)
-        cfg.wandb.tags = [cfg.mode]
+        cfg.wandb.tags = tags
     else:
         generate_exp_directory(cfg, tags, additional_id=os.environ.get('MASTER_PORT', None))
         cfg.wandb.tags = tags
