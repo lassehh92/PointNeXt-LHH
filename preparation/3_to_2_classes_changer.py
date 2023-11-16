@@ -39,12 +39,12 @@ def process_npy_files(input_folder, output_folder):
 
         # Save the modified data to the output folder
         output_file = os.path.join(output_folder, os.path.basename(file))
-        np.savetxt(output_file, data)
+        np.save(output_file, data)
         print(f"Modified data saved to: {output_file}\n")
 
 # Example usage
-input_folder = '/Volumes/LHH-WD-1TB/data/test-2-classes/'  # Replace with your actual input folder path
-output_folder = '/Volumes/LHH-WD-1TB/data/test-2-classes/2-classes'  # Replace with your actual output folder path
+input_folder = '/home/lasse/Git/PointNeXt/data/OpenTrench3D/test_fjernvarme/raw'  # Replace with your actual input folder path
+output_folder = '/home/lasse/Git/PointNeXt/data/OpenTrench3D/2-classes/test_fjernvarme/raw'  # Replace with your actual output folder path
 
 # Uncomment the following line to run the function
 process_npy_files(input_folder, output_folder)

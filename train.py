@@ -53,8 +53,8 @@ if __name__ == '__main__':
     if cfg.epochs is not None:
         cfg.epochs = args.epochs
 
-    assert args.pretrained_path is not None, "Make sure to specify path to pretrained model"
-    cfg.pretrained_path = args.pretrained_path
+    # assert args.pretrained_path is not None, "Make sure to specify path to pretrained model"
+    # cfg.pretrained_path = args.pretrained_path
 
     # init distributed env first, since logger depends on the dist info.
     cfg.rank, cfg.world_size, cfg.distributed, cfg.mp = dist_utils.get_dist_info(cfg)

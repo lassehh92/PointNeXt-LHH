@@ -11,13 +11,11 @@ from ..build import DATASETS
 
 @DATASETS.register_module()
 class Novafos3D(Dataset):
-    classes = ['terrain',
-               'excavation',
+    classes = ['excavation',
                'pipe']
-    num_classes = 3
+    num_classes = 2
     num_per_class = np.array([3370714, 2856755, 4919229], dtype=np.int32) #only used if (cls_weighed_loss: True) in cfg default 
-    class2color = {'terrain':     [0, 255, 0],
-                   'excavation':  [0, 0, 255],
+    class2color = {'excavation':  [0, 0, 255],
                    'pipe':        [255, 0, 0]}
 
     cmap = [*class2color.values()]
