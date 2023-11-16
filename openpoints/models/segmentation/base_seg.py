@@ -17,6 +17,7 @@ class BaseSeg(nn.Module):
                  encoder_args=None,
                  decoder_args=None,
                  cls_args=None,
+                 longrange_args=None,
                  **kwargs):
         super().__init__()
         self.encoder = build_model_from_cfg(encoder_args)
@@ -28,6 +29,11 @@ class BaseSeg(nn.Module):
             self.decoder = build_model_from_cfg(decoder_args_merged_with_encoder)
         else:
             self.decoder = None
+
+        if longrange_args is not None:
+            self.decoder.longrange = build_model_from_cfg(longrange_args)
+        else:
+            self.longrange = None
 
         if cls_args is not None:
             if hasattr(self.decoder, 'out_channels'):
@@ -96,25 +102,25 @@ class SegHead(nn.Module):
                  norm_args={'norm': 'bn1d'},
                  act_args={'act': 'relu'},
                  dropout=0.5,
-                 global_feat=None, 
+                 globals=None, 
                  **kwargs
                  ):
         """A scene segmentation head for ResNet backbone.
         Args:
             num_classes: class num.
             in_channles: the base channel num.
-            global_feat: global features to concat. [max,avg]. Set to None if do not concat any.
+            globals: global features to concat. [max,avg]. Set to None if do not concat any.
         Returns:
             logits: (B, num_classes, N)
         """
         super().__init__()
         if kwargs:
             logging.warning(f"kwargs: {kwargs} are not used in {__class__.__name__}")
-        if global_feat is not None:
-            self.global_feat = global_feat.split(',')
-            multiplier = len(self.global_feat) + 1
+        if globals is not None:
+            self.globals = globals.split(',')
+            multiplier = len(self.globals) + 1
         else:
-            self.global_feat = None
+            self.globals = None
             multiplier = 1
         in_channels *= multiplier
         
@@ -136,9 +142,9 @@ class SegHead(nn.Module):
         self.head = nn.Sequential(*heads)
 
     def forward(self, end_points):
-        if self.global_feat is not None: 
+        if self.globals is not None: 
             global_feats = [] 
-            for feat_type in self.global_feat:
+            for feat_type in self.globals:
                 if 'max' in feat_type:
                     global_feats.append(torch.max(end_points, dim=-1, keepdim=True)[0])
                 elif feat_type in ['avg', 'mean']:

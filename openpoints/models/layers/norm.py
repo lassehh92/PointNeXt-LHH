@@ -9,6 +9,97 @@ import copy
 from easydict import EasyDict as edict
 
 
+class NeighborNormBC2d(nn.LayerNorm):
+    """ LayerNorm for channels of '2D' spatial BCHW tensors """
+
+    def __init__(self, num_channels, **kwargs):
+        super().__init__(num_channels)
+        self.ln1d = LayerNorm1d(num_channels)
+        self.bn2d = nn.BatchNorm2d(num_channels)
+
+    def forward(self, x: torch.Tensor) -> torch.Tensor:
+        B, C, N, K = x.shape
+        x = self.bn2d(x)
+        #B,C,N,K --> B,N,C,K
+        x = x.permute(0, 2, 1, 3).contiguous()
+        #B,N,C,K --> BN,C,K
+        x = x.view(B*N, C, K)
+        # instance norm
+        x = self.ln1d(x)
+        #BN,C,K --> B,N,C,K
+        x = x.view(B, N, C, K)
+        #B,N,C,K --> B,C,N,K
+        x = x.permute(0, 2, 1, 3).contiguous()
+        return x
+
+
+class NeighborNormB2d(nn.LayerNorm):
+    """ LayerNorm for channels of '2D' spatial BCHW tensors """
+
+    def __init__(self, num_channels, **kwargs):
+        super().__init__(num_channels)
+        self.in1d = nn.InstanceNorm1d(num_channels)
+        self.bn2d = nn.BatchNorm2d(num_channels)
+
+    def forward(self, x: torch.Tensor) -> torch.Tensor:
+        B, C, N, K = x.shape
+        x = self.bn2d(x)
+        #B,C,N,K --> B,N,C,K
+        x = x.permute(0, 2, 1, 3).contiguous()
+        #B,N,C,K --> BN,C,K
+        x = x.view(B*N, C, K)
+        # instance norm
+        x = self.in1d(x)
+        #BN,C,K --> B,N,C,K
+        x = x.view(B, N, C, K)
+        #B,N,C,K --> B,C,N,K
+        x = x.permute(0, 2, 1, 3).contiguous()
+        return x
+
+
+class NeighborNormC2d(nn.LayerNorm):
+    """ LayerNorm for channels of '2D' spatial BCHW tensors """
+
+    def __init__(self, num_channels, **kwargs):
+        super().__init__(num_channels)
+        self.ln1d = LayerNorm1d(num_channels)
+
+    def forward(self, x: torch.Tensor) -> torch.Tensor:
+        B, C, N, K = x.shape
+        #B,C,N,K --> B,N,C,K
+        x = x.permute(0, 2, 1, 3).contiguous()
+        #B,N,C,K --> BN,C,K
+        x = x.view(B*N, C, K)
+        # instance norm
+        x = self.ln1d(x)
+        #BN,C,K --> B,N,C,K
+        x = x.view(B, N, C, K)
+        #B,N,C,K --> B,C,N,K
+        x = x.permute(0, 2, 1, 3).contiguous()
+        return x
+
+class NeighborNorm2d(nn.LayerNorm):
+    """ LayerNorm for channels of '2D' spatial BCHW tensors """
+
+    def __init__(self, num_channels, **kwargs):
+        super().__init__(num_channels)
+        self.in1d = nn.InstanceNorm1d(num_channels)
+
+    def forward(self, x: torch.Tensor) -> torch.Tensor:
+        B, C, N, K = x.shape
+        #B,C,N,K --> B,N,C,K
+        x = x.permute(0, 2, 1, 3).contiguous()
+        #B,N,C,K --> BN,C,K
+        x = x.view(B*N, C, K)
+        # instance norm
+        x = self.in1d(x)
+        #BN,C,K --> B,N,C,K
+        x = x.view(B, N, C, K)
+        #B,N,C,K --> B,C,N,K
+        x = x.permute(0, 2, 1, 3).contiguous()
+        return x
+       
+
 class LayerNorm2d(nn.LayerNorm):
     """ LayerNorm for channels of '2D' spatial BCHW tensors """
 
@@ -68,6 +159,10 @@ _NORM_LAYER = dict(
     fastbn1d=FastBatchNorm1d, 
     fastbn2d=FastBatchNorm1d, 
     fastbn=FastBatchNorm1d, 
+    nbn2d=NeighborNorm2d,   # permute and in1d
+    nbcn2d=NeighborNormC2d, # permute and ln1d
+    nbbn2d=NeighborNormB2d, # first bn2d, then permute and in1d
+    nbbcn2d=NeighborNormBC2d,# first bn2d, then permute and ln1d
 )
 
 
@@ -95,6 +190,26 @@ def create_norm(norm_args, channels, dimension=None):
         assert norm in _NORM_LAYER.keys(), f"input {norm} is not supported"
         norm = _NORM_LAYER[norm]
     return norm(channels, **norm_args)
+
+
+# TODO: remove create_norm1d
+def create_norm1d(norm_args, channels):
+    """Build normalization layer.
+    Returns:
+        nn.Module: Created normalization layer.
+    """
+    norm_args_copy = edict(copy.deepcopy(norm_args))
+
+    if norm_args_copy is None or not norm_args_copy:  # Empty or None
+        return None
+
+    norm = norm_args_copy.get('norm', None)
+    if norm is None:
+        return None
+
+    if '1d' not in norm and norm != 'ln':
+        norm_args_copy.norm += '1d'
+    return create_norm(norm_args_copy, channels)
 
 
 if __name__ == "__main__":

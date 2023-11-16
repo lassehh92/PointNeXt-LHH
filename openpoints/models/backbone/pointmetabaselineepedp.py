@@ -1,8 +1,5 @@
-"""Official implementation of PointNext
-PointNeXt: Revisiting PointNet++ with Improved Training and Scaling Strategies
-https://arxiv.org/abs/2206.04670
-Guocheng Qian, Yuchen Li, Houwen Peng, Jinjie Mai, Hasan Abed Al Kader Hammoud, Mohamed Elhoseiny, Bernard Ghanem
-"""
+
+from re import I
 from typing import List, Type
 import logging
 import torch
@@ -10,7 +7,7 @@ import torch.nn as nn
 from ..build import MODELS
 from ..layers import create_convblock1d, create_convblock2d, create_act, CHANNEL_MAP, \
     create_grouper, furthest_point_sample, random_sample, three_interpolation
-
+import copy
 
 def get_reduction_fn(reduction):
     reduction = 'mean' if reduction.lower() == 'avg' else reduction
@@ -59,28 +56,33 @@ class LocalAggregation(nn.Module):
         super().__init__()
         if kwargs:
             logging.warning(f"kwargs: {kwargs} are not used in {__class__.__name__}")
-        channels[0] = CHANNEL_MAP[feature_type](channels[0])
-        convs = []
-        for i in range(len(channels) - 1):  # #layers in each blocks
-            convs.append(create_convblock2d(channels[i], channels[i + 1],
-                                            norm_args=norm_args,
+        channels1 = channels 
+        convs1 = []
+        for i in range(len(channels1) - 1):  # #layers in each blocks
+            convs1.append(create_convblock1d(channels1[i], channels1[i + 1],
+                                             norm_args=norm_args,
                                             act_args=None if i == (
-                                                    len(channels) - 2) and not last_act else act_args,
-                                            **conv_args)
-                         )
-        self.convs = nn.Sequential(*convs)
+                                                    len(channels1) - 2) and not last_act else act_args,
+                                             **conv_args)
+                          )
+        self.convs1 = nn.Sequential(*convs1)
         self.grouper = create_grouper(group_args)
         self.reduction = reduction.lower()
         self.pool = get_reduction_fn(self.reduction)
         self.feature_type = feature_type
 
-    def forward(self, pf) -> torch.Tensor:
+    def forward(self, pf, pe) -> torch.Tensor:
         # p: position, f: feature
         p, f = pf
-        # neighborhood_features
+        # preconv
+        f = self.convs1(f)
+        # grouping
         dp, fj = self.grouper(p, p, f)
-        fj = get_aggregation_feautres(p, dp, f, fj, self.feature_type)
-        f = self.pool(self.convs(fj))
+        # pe + fj 
+        f = pe + fj
+        dp_w = pe_encoder(dp, fj.shape[1])
+        f = f * dp_w
+        f = self.pool(f)
         """ DEBUG neighbor numbers. 
         if f.shape[-1] != 1:
             query_xyz, support_xyz = p, p
@@ -92,6 +94,13 @@ class LocalAggregation(nn.Module):
         DEBUG end """
         return f
 
+
+def pe_encoder(dp, C):
+    B, _, N, K = dp.shape
+    num_repeat = C//3
+    dp = dp.unsqueeze(2).repeat(1, 1, num_repeat, 1, 1)
+    pe = dp.view(B, C, N, K)
+    return pe
 
 class SetAbstraction(nn.Module):
     """The modified set abstraction module in PointNet++ with residual connection support
@@ -122,7 +131,12 @@ class SetAbstraction(nn.Module):
         mid_channel = out_channels // 2 if stride > 1 else out_channels
         channels = [in_channels] + [mid_channel] * \
                    (layers - 1) + [out_channels]
-        channels[0] = in_channels if is_head else CHANNEL_MAP[feature_type](channels[0])
+        channels[0] = in_channels #if is_head else CHANNEL_MAP[feature_type](channels[0])
+        channels1 = channels
+        channels2 = copy.copy(channels)
+        channels2[0] = 3
+        convs1 = []
+        convs2 = []
 
         if self.use_res:
             self.skipconv = create_convblock1d(
@@ -131,17 +145,25 @@ class SetAbstraction(nn.Module):
             self.act = create_act(act_args)
 
         # actually, one can use local aggregation layer to replace the following
-        create_conv = create_convblock1d if is_head else create_convblock2d
-        convs = []
-        for i in range(len(channels) - 1):
-            convs.append(create_conv(channels[i], channels[i + 1],
-                                     norm_args=norm_args if not is_head else None,
-                                     act_args=None if i == len(channels) - 2
-                                                      and (self.use_res or is_head) else act_args,
-                                     **conv_args)
-                         )
-        self.convs = nn.Sequential(*convs)
+        for i in range(len(channels1) - 1):  # #layers in each blocks
+            convs1.append(create_convblock1d(channels1[i], channels1[i + 1],
+                                             norm_args=norm_args if not is_head else None,
+                                             act_args=None if i == len(channels) - 2
+                                                            and (self.use_res or is_head) else act_args,
+                                             **conv_args)
+                          )
+        self.convs1 = nn.Sequential(*convs1)
+
         if not is_head:
+            for i in range(len(channels2) - 1):  # #layers in each blocks
+                convs2.append(create_convblock2d(channels2[i], channels2[i + 1],
+                                                 norm_args=norm_args if not is_head else None,
+                                                #  act_args=None if i == len(channels) - 2
+                                                #                 and (self.use_res or is_head) else act_args,
+                                                 act_args=act_args,
+                                                **conv_args)
+                            )
+            self.convs2 = nn.Sequential(*convs2)
             if self.all_aggr:
                 group_args.nsample = None
                 group_args.radius = None
@@ -152,10 +174,10 @@ class SetAbstraction(nn.Module):
             elif sampler.lower() == 'random':
                 self.sample_fn = random_sample
 
-    def forward(self, pf):
-        p, f = pf
+    def forward(self, pf_pe):
+        p, f, pe = pf_pe
         if self.is_head:
-            f = self.convs(f)  # (n, c)
+            f = self.convs1(f)  # (n, c)
         else:
             if not self.all_aggr:
                 idx = self.sample_fn(p, p.shape[1] // self.stride).long()
@@ -176,13 +198,21 @@ class SetAbstraction(nn.Module):
                     identity = self.skipconv(fi)
             else:
                 fi = None
+            # preconv
+            f = self.convs1(f)
+            # grouping
             dp, fj = self.grouper(new_p, p, f)
-            fj = get_aggregation_feautres(new_p, dp, fi, fj, feature_type=self.feature_type)
-            f = self.pool(self.convs(fj))
+            # conv on neighborhood_dp
+            pe = self.convs2(dp)
+            # pe + fj 
+            f = pe + fj
+            dp_w = pe_encoder(dp, fj.shape[1])
+            f = f * dp_w
+            f = self.pool(f)
             if self.use_res:
                 f = self.act(f + identity)
             p = new_p
-        return p, f
+        return p, f, pe
 
 
 class FeaturePropogation(nn.Module):
@@ -251,7 +281,7 @@ class InvResMLP(nn.Module):
                  conv_args=None,
                  expansion=1,
                  use_res=True,
-                 num_posconvs=2,
+                 num_posconvs=1,#2,
                  less_act=False,
                  **kwargs
                  ):
@@ -259,13 +289,15 @@ class InvResMLP(nn.Module):
         self.use_res = use_res
         mid_channels = int(in_channels * expansion)
         self.convs = LocalAggregation([in_channels, in_channels],
-                                      norm_args=norm_args, act_args=act_args if num_posconvs > 0 else None,
+                                      norm_args=norm_args, act_args=act_args ,#if num_posconvs > 0 else None,
                                       group_args=group_args, conv_args=conv_args,
                                       **aggr_args, **kwargs)
         if num_posconvs < 1:
             channels = []
         elif num_posconvs == 1:
             channels = [in_channels, in_channels]
+        elif num_posconvs == 4:
+            channels = [in_channels, in_channels, in_channels, in_channels, in_channels]
         else:
             channels = [in_channels, mid_channels, in_channels]
         pwconv = []
@@ -280,50 +312,19 @@ class InvResMLP(nn.Module):
         self.pwconv = nn.Sequential(*pwconv)
         self.act = create_act(act_args)
 
-    def forward(self, pf):
-        p, f = pf
+    def forward(self, pf_pe):
+        p, f, pe = pf_pe
         identity = f
-        f = self.convs([p, f])
+        f = self.convs([p, f], pe)
         f = self.pwconv(f)
         if f.shape[-1] == identity.shape[-1] and self.use_res:
             f += identity
         f = self.act(f)
-        return [p, f]
-
-
-class ResBlock(nn.Module):
-    def __init__(self,
-                 in_channels,
-                 norm_args=None,
-                 act_args=None,
-                 aggr_args={'feature_type': 'dp_fj', "reduction": 'max'},
-                 group_args={'NAME': 'ballquery'},
-                 conv_args=None,
-                 expansion=1,
-                 use_res=True,
-                 **kwargs
-                 ):
-        super().__init__()
-        self.use_res = use_res
-        mid_channels = in_channels * expansion
-        self.convs = LocalAggregation([in_channels, in_channels, mid_channels, in_channels],
-                                      norm_args=norm_args, act_args=None,
-                                      group_args=group_args, conv_args=conv_args,
-                                      **aggr_args, **kwargs)
-        self.act = create_act(act_args)
-
-    def forward(self, pf):
-        p, f = pf
-        identity = f
-        f = self.convs([p, f])
-        if f.shape[-1] == identity.shape[-1] and self.use_res:
-            f += identity
-        f = self.act(f)
-        return [p, f]
+        return [p, f, pe]
 
 
 @MODELS.register_module()
-class PointNextEncoder(nn.Module):
+class PointMetaBaselineEPEDPEncoder(nn.Module):
     r"""The Encoder for PointNext 
     `"PointNeXt: Revisiting PointNet++ with Improved Training and Scaling Strategies".
     <https://arxiv.org/abs/2206.04670>`_.
@@ -390,6 +391,8 @@ class PointNextEncoder(nn.Module):
                 width *= 2
             channels.append(width)
         encoder = []
+        pe_encoder = []
+        pe_grouper = []
         for i in range(len(blocks)):
             group_args.radius = self.radii[i]
             group_args.nsample = self.nsample[i]
@@ -397,7 +400,14 @@ class PointNextEncoder(nn.Module):
                 block, channels[i], blocks[i], stride=strides[i], group_args=group_args,
                 is_head=i == 0 and strides[i] == 1
             ))
+            pe_encoder.append(self._make_pe_enc(
+                block, channels[i], blocks[i], stride=strides[i], group_args=group_args,
+                is_head=i == 0 and strides[i] == 1
+            ))
+            pe_grouper.append(create_grouper(group_args))
         self.encoder = nn.Sequential(*encoder)
+        self.pe_encoder = nn.Sequential(*pe_encoder)
+        self.pe_grouper = pe_grouper
         self.out_channels = channels[-1]
         self.channel_list = channels
 
@@ -420,6 +430,19 @@ class PointNextEncoder(nn.Module):
                         [param] + [param * param_scaling] * (self.blocks[i] - 1))
                     param *= param_scaling
         return param_list
+
+    def _make_pe_enc(self, block, channels, blocks, stride, group_args, is_head=False):
+        ## for PE of this stage
+        channels2 = [3, channels]
+        convs2 = []
+        for i in range(len(channels2) - 1):  # #layers in each blocks
+            convs2.append(create_convblock2d(channels2[i], channels2[i + 1],
+                                            norm_args=self.norm_args,
+                                            act_args=self.act_args,
+                                            **self.conv_args)
+                         )
+        convs2 = nn.Sequential(*convs2)
+        return convs2
 
     def _make_enc(self, block, channels, blocks, stride, group_args, is_head=False):
         layers = []
@@ -462,7 +485,16 @@ class PointNextEncoder(nn.Module):
             f0 = p0.clone().transpose(1, 2).contiguous()
         p, f = [p0], [f0]
         for i in range(0, len(self.encoder)):
-            _p, _f = self.encoder[i]([p[-1], f[-1]])
+            if i == 0:
+                pe = None
+                _p, _f, _ = self.encoder[i]([p[-1], f[-1], pe])
+            else:
+                _p, _f, _ = self.encoder[i][0]([p[-1], f[-1], pe])
+                # grouping
+                dp, _ = self.pe_grouper[i](_p, _p, None)
+                # conv on neighborhood_dp
+                pe = self.pe_encoder[i](dp)
+                _p, _f, _ = self.encoder[i][1:]([_p, _f, pe])
             p.append(_p)
             f.append(_f)
         return p, f
@@ -470,209 +502,3 @@ class PointNextEncoder(nn.Module):
     def forward(self, p0, f0=None):
         return self.forward_seg_feat(p0, f0)
 
-
-@MODELS.register_module()
-class PointNextDecoder(nn.Module):
-    def __init__(self,
-                 encoder_channel_list: List[int],
-                 decoder_layers: int = 2,
-                 decoder_stages: int = 4, 
-                 **kwargs
-                 ):
-        super().__init__()
-        self.decoder_layers = decoder_layers
-        self.in_channels = encoder_channel_list[-1]
-        skip_channels = encoder_channel_list[:-1]
-        if len(skip_channels) < decoder_stages:
-            skip_channels.insert(0, kwargs.get('in_channels', 3))
-        # the output channel after interpolation
-        fp_channels = encoder_channel_list[:decoder_stages]
-
-        n_decoder_stages = len(fp_channels)
-        decoder = [[] for _ in range(n_decoder_stages)]
-        for i in range(-1, -n_decoder_stages - 1, -1):
-            decoder[i] = self._make_dec(
-                skip_channels[i], fp_channels[i])
-        self.decoder = nn.Sequential(*decoder)
-        self.out_channels = fp_channels[-n_decoder_stages]
-
-    def _make_dec(self, skip_channels, fp_channels):
-        layers = []
-        mlp = [skip_channels + self.in_channels] + \
-              [fp_channels] * self.decoder_layers
-        layers.append(FeaturePropogation(mlp))
-        self.in_channels = fp_channels
-        return nn.Sequential(*layers)
-
-    def forward(self, p, f):
-        for i in range(-1, -len(self.decoder) - 1, -1):
-            f[i - 1] = self.decoder[i][1:](
-                [p[i], self.decoder[i][0]([p[i - 1], f[i - 1]], [p[i], f[i]])])[1]
-        return f[-len(self.decoder) - 1]
-
-
-@MODELS.register_module()
-class PointNextPartDecoder(nn.Module):
-    def __init__(self,
-                 encoder_channel_list: List[int],
-                 decoder_layers: int = 2,
-                 decoder_blocks: List[int] = [1, 1, 1, 1],
-                 decoder_strides: List[int] = [4, 4, 4, 4],
-                 act_args: str = 'relu',
-                 cls_map='pointnet2',
-                 num_classes: int = 16,
-                 cls2partembed=None,
-                 **kwargs
-                 ):
-        super().__init__()
-        self.decoder_layers = decoder_layers
-        self.in_channels = encoder_channel_list[-1]
-        skip_channels = encoder_channel_list[:-1]
-        fp_channels = encoder_channel_list[:-1]
-        
-        # the following is for decoder blocks
-        self.conv_args = kwargs.get('conv_args', None)
-        radius_scaling = kwargs.get('radius_scaling', 2)
-        nsample_scaling = kwargs.get('nsample_scaling', 1)
-        block = kwargs.get('block', 'InvResMLP')
-        if isinstance(block, str):
-            block = eval(block)
-        self.blocks = decoder_blocks
-        self.strides = decoder_strides
-        self.norm_args = kwargs.get('norm_args', {'norm': 'bn'}) 
-        self.act_args = kwargs.get('act_args', {'act': 'relu'}) 
-        self.expansion = kwargs.get('expansion', 4)
-        radius = kwargs.get('radius', 0.1)
-        nsample = kwargs.get('nsample', 16)
-        self.radii = self._to_full_list(radius, radius_scaling)
-        self.nsample = self._to_full_list(nsample, nsample_scaling)
-        self.cls_map = cls_map
-        self.num_classes = num_classes
-        self.use_res = kwargs.get('use_res', True)
-        group_args = kwargs.get('group_args', {'NAME': 'ballquery'})
-        self.aggr_args = kwargs.get('aggr_args', 
-                                    {'feature_type': 'dp_fj', "reduction": 'max'}
-                                    )  
-        if self.cls_map == 'curvenet':
-            # global features
-            self.global_conv2 = nn.Sequential(
-                create_convblock1d(fp_channels[-1] * 2, 128,
-                                   norm_args=None,
-                                   act_args=act_args))
-            self.global_conv1 = nn.Sequential(
-                create_convblock1d(fp_channels[-2] * 2, 64,
-                                   norm_args=None,
-                                   act_args=act_args))
-            skip_channels[0] += 64 + 128 + 16  # shape categories labels
-        elif self.cls_map == 'pointnet2':
-            self.convc = nn.Sequential(create_convblock1d(16, 64,
-                                                          norm_args=None,
-                                                          act_args=act_args))
-            skip_channels[0] += 64  # shape categories labels
-
-        elif self.cls_map == 'pointnext':
-            self.global_conv2 = nn.Sequential(
-                create_convblock1d(fp_channels[-1] * 2, 128,
-                                   norm_args=None,
-                                   act_args=act_args))
-            self.global_conv1 = nn.Sequential(
-                create_convblock1d(fp_channels[-2] * 2, 64,
-                                   norm_args=None,
-                                   act_args=act_args))
-            skip_channels[0] += 64 + 128 + 50  # shape categories labels
-            self.cls2partembed = cls2partembed
-        elif self.cls_map == 'pointnext1':
-            self.convc = nn.Sequential(create_convblock1d(50, 64,
-                                                          norm_args=None,
-                                                          act_args=act_args))
-            skip_channels[0] += 64  # shape categories labels
-            self.cls2partembed = cls2partembed
-
-        n_decoder_stages = len(fp_channels)
-        decoder = [[] for _ in range(n_decoder_stages)]
-        for i in range(-1, -n_decoder_stages - 1, -1):
-            group_args.radius = self.radii[i]
-            group_args.nsample = self.nsample[i]
-            decoder[i] = self._make_dec(
-                skip_channels[i], fp_channels[i], group_args=group_args, block=block, blocks=self.blocks[i])
-
-        self.decoder = nn.Sequential(*decoder)
-        self.out_channels = fp_channels[-n_decoder_stages]
-
-    def _make_dec(self, skip_channels, fp_channels, group_args=None, block=None, blocks=1):
-        layers = []
-        radii = group_args.radius
-        nsample = group_args.nsample
-        mlp = [skip_channels + self.in_channels] + \
-              [fp_channels] * self.decoder_layers
-        layers.append(FeaturePropogation(mlp, act_args=self.act_args))
-        self.in_channels = fp_channels
-        for i in range(1, blocks):
-            group_args.radius = radii[i]
-            group_args.nsample = nsample[i]
-            layers.append(block(self.in_channels,
-                                aggr_args=self.aggr_args,
-                                norm_args=self.norm_args, act_args=self.act_args, group_args=group_args,
-                                conv_args=self.conv_args, expansion=self.expansion,
-                                use_res=self.use_res
-                                ))
-        return nn.Sequential(*layers)
-
-    def _to_full_list(self, param, param_scaling=1):
-        # param can be: radius, nsample
-        param_list = []
-        if isinstance(param, List):
-            # make param a full list
-            for i, value in enumerate(param):
-                value = [value] if not isinstance(value, List) else value
-                if len(value) != self.blocks[i]:
-                    value += [value[-1]] * (self.blocks[i] - len(value))
-                param_list.append(value)
-        else:  # radius is a scalar (in this case, only initial raidus is provide), then create a list (radius for each block)
-            for i, stride in enumerate(self.strides):
-                if stride == 1:
-                    param_list.append([param] * self.blocks[i])
-                else:
-                    param_list.append(
-                        [param] + [param * param_scaling] * (self.blocks[i] - 1))
-                    param *= param_scaling
-        return param_list
-
-    def forward(self, p, f, cls_label):
-        B, N = p[0].shape[0:2]
-        if self.cls_map == 'curvenet':
-            emb1 = self.global_conv1(f[-2])
-            emb1 = emb1.max(dim=-1, keepdim=True)[0]  # bs, 64, 1
-            emb2 = self.global_conv2(f[-1])
-            emb2 = emb2.max(dim=-1, keepdim=True)[0]  # bs, 128, 1
-            cls_one_hot = torch.zeros((B, self.num_classes), device=p[0].device)
-            cls_one_hot = cls_one_hot.scatter_(1, cls_label, 1).unsqueeze(-1)
-            cls_one_hot = torch.cat((emb1, emb2, cls_one_hot), dim=1)
-            cls_one_hot = cls_one_hot.expand(-1, -1, N)
-        elif self.cls_map == 'pointnet2':
-            cls_one_hot = torch.zeros((B, self.num_classes), device=p[0].device)
-            cls_one_hot = cls_one_hot.scatter_(1, cls_label, 1).unsqueeze(-1).repeat(1, 1, N)
-            cls_one_hot = self.convc(cls_one_hot)
-        elif self.cls_map == 'pointnext':
-            emb1 = self.global_conv1(f[-2])
-            emb1 = emb1.max(dim=-1, keepdim=True)[0]  # bs, 64, 1
-            emb2 = self.global_conv2(f[-1])
-            emb2 = emb2.max(dim=-1, keepdim=True)[0]  # bs, 128, 1
-            self.cls2partembed = self.cls2partembed.to(p[0].device)
-            cls_one_hot = self.cls2partembed[cls_label.squeeze()].unsqueeze(-1)
-            cls_one_hot = torch.cat((emb1, emb2, cls_one_hot), dim=1)
-            cls_one_hot = cls_one_hot.expand(-1, -1, N)
-        elif self.cls_map == 'pointnext1':
-            self.cls2partembed = self.cls2partembed.to(p[0].device)
-            cls_one_hot = self.cls2partembed[cls_label.squeeze()].unsqueeze(-1).expand(-1, -1, N)
-            cls_one_hot = self.convc(cls_one_hot)
-
-        for i in range(-1, -len(self.decoder), -1):
-            f[i - 1] = self.decoder[i][1:](
-                [p[i-1], self.decoder[i][0]([p[i - 1], f[i - 1]], [p[i], f[i]])])[1]
-
-        # TODO: study where to add this ? 
-        f[-len(self.decoder) - 1] = self.decoder[0][1:](
-            [p[1], self.decoder[0][0]([p[1], torch.cat([cls_one_hot, f[1]], 1)], [p[2], f[2]])])[1]
-
-        return f[-len(self.decoder) - 1]

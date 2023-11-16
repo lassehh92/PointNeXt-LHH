@@ -194,8 +194,7 @@ class S3DISSphere(data.Dataset):
                 print(f"{filename} saved successfully")
         else:
             with open(filename, 'rb') as f:
-                (self.clouds_points, self.clouds_points_colors, self.clouds_points_labels, 
-                 self.clouds_rooms, 
+                (self.clouds_points, self.clouds_points_colors, self.clouds_points_labels, self.clouds_rooms, 
                  self.sub_clouds_points, self.sub_clouds_points_colors, self.sub_clouds_points_labels,
                  self.sub_cloud_trees) = pickle.load(f)
                 print(f"{filename} loaded successfully")
@@ -341,8 +340,11 @@ class S3DISSphere(data.Dataset):
         if self.transform is not None:
             data = self.transform(data)
 
-        if 'heights' not in data.keys():
-            data['heights'] =  torch.from_numpy(original_points[:, self.gravity_dim:self.gravity_dim+1].astype(np.float32))
+        if 'heights' in data.keys():
+            data['x'] = torch.cat((data['x'], data['heights']), dim=1)
+        else:
+            data['x'] = torch.cat((data['x'],
+                                   torch.from_numpy(original_points[:, 2:3].astype(np.float32))), dim=-1)
         return data
 
     def __len__(self):

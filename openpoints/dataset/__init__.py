@@ -5,7 +5,7 @@ from .modelnet import *
 from .s3dis import S3DIS, S3DISSphere
 from .shapenet import *
 from .semantic_kitti import *
-from .scanobjectnn import *
-from .shapenetpart import *
+from .scanobjectnn import * # comment for chamfer error
+from .shapenetpart import * # comment for chamfer error
 from .scannetv2 import *
 from .novafos3d import Novafos3D

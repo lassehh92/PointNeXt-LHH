@@ -33,7 +33,7 @@ class PointViT(nn.Module):
                  norm_args={'norm': 'ln', 'eps': 1.0e-6},
                  act_args={'act': 'gelu'},
                  add_pos_each_block=True,
-                 global_feat='cls,max',
+                 globals='cls,max',
                  distill=False, 
                  **kwargs
                  ):
@@ -81,8 +81,8 @@ class PointViT(nn.Module):
             )
             for i in range(depth)])
         self.norm = create_norm(norm_args, self.embed_dim)  # Norm layer is extremely important here!
-        self.global_feat = global_feat.split(',')
-        self.out_channels = len(self.global_feat)*embed_dim
+        self.globals = globals.split(',')
+        self.out_channels = len(self.globals)*embed_dim
         self.distill_channels = embed_dim
         self.channel_list = self.patch_embed.channel_list
         self.channel_list[-1] = embed_dim
@@ -153,7 +153,7 @@ class PointViT(nn.Module):
         _, _, x = self.forward(p, x)
         token_features = x[:, self.n_tokens:, :]
         cls_feats = []
-        for token_type in self.global_feat:
+        for token_type in self.globals:
             if 'cls' in token_type:
                 cls_feats.append(x[:, 0, :])
             elif 'max' in token_type:
@@ -180,32 +180,26 @@ class PointViTDecoder(nn.Module):
     def __init__(self,
                  encoder_channel_list: List[int], 
                  decoder_layers: int = 2, 
-                 n_decoder_stages: int = 2, # TODO: ablate this 
-                 scale: int = 4,
+                 n_decoder_stages: int = 4, 
+                 scale: int = 2,
                  channel_scaling: int = 1,  
                  sampler: str = 'fps',
-                 global_feat=None, 
-                 progressive_input=False,
+                 globals=None, 
                  **kwargs
                  ):
         super().__init__()
         self.decoder_layers = decoder_layers
-        if global_feat is not None:
-            self.global_feat = global_feat.split(',')
-            num_global_feat = len(self.global_feat)
+        if globals is not None:
+            self.globals = globals.split(',')
+            num_globals = len(self.globals)
         else:
-            self.global_feat = None
-            num_global_feat = 0 
+            self.globals = None
+            num_globals = 0 
  
         self.in_channels = encoder_channel_list[-1]
         self.scale = scale
         self.n_decoder_stages = n_decoder_stages
-        
-        if progressive_input:
-            skip_dim = [self.in_channels//2**i for i in range(n_decoder_stages-1, 0, -1)]
-        else:
-            skip_dim = [0 for i in range(n_decoder_stages-1)]
-        skip_channels = [encoder_channel_list[0]] + skip_dim
+        skip_channels = [encoder_channel_list[0]] + [0] * (n_decoder_stages-1)
         
         fp_channels = [self.in_channels*channel_scaling]
         for _ in range(n_decoder_stages-1):
@@ -216,7 +210,7 @@ class PointViTDecoder(nn.Module):
             decoder[i] = self._make_dec(
                 skip_channels[i], fp_channels[i])
         self.decoder = nn.Sequential(*decoder)
-        self.out_channels = fp_channels[-n_decoder_stages] * (num_global_feat + 1)
+        self.out_channels = fp_channels[-n_decoder_stages] * (num_globals + 1)
 
         if sampler.lower() == 'fps':
             self.sample_fn = furthest_point_sample
@@ -237,24 +231,26 @@ class PointViTDecoder(nn.Module):
             p (List(Tensor)): List of tensor for p, length 2, input p and center p
             f (List(Tensor)): List of tensor for feature maps, input features and out features
         """
-        if len(p) != (self.n_decoder_stages + 1):
-            for i in range(self.n_decoder_stages - 1): 
-                pos = p[i] 
-                idx = self.sample_fn(pos, pos.shape[1] // self.scale).long()
-                new_p = torch.gather(pos, 1, idx.unsqueeze(-1).expand(-1, -1, 3))
-                p.insert(1, new_p)
-                f.insert(1, None)
+        p_list = [p[0]]
+        f_list = [f[0]]
+        for i in range(self.n_decoder_stages - 1): 
+            pos = p_list[i] 
+            idx = self.sample_fn(pos, pos.shape[1] // self.scale).long()
+            new_p = torch.gather(pos, 1, idx.unsqueeze(-1).expand(-1, -1, 3))
+            p_list.append(new_p)
+            f_list.append(None)
+        p_list.append(p[-1])
         cls_token = f[-1][:, :, 0:1]
-        f[-1] = f[-1][:, :, 1:].contiguous()
+        f_list.append(f[-1][:, :, 1:].contiguous())
         
         for i in range(-1, -len(self.decoder) - 1, -1):
-            f[i - 1] = self.decoder[i][1:](
-                [p[i], self.decoder[i][0]([p[i - 1], f[i - 1]], [p[i], f[i]])])[1]
-        f_out = f[-len(self.decoder) - 1] 
+            f_list[i - 1] = self.decoder[i][1:](
+                [p_list[i], self.decoder[i][0]([p_list[i - 1], f_list[i - 1]], [p_list[i], f_list[i]])])[1]
+        f_out = f_list[-len(self.decoder) - 1] 
         
-        if self.global_feat is not None:
+        if self.globals is not None:
             global_feats = []
-            for token_type in self.global_feat:
+            for token_type in self.globals:
                 if 'cls' in token_type:
                     global_feats.append(cls_token)
                 elif 'max' in token_type:
@@ -273,39 +269,32 @@ class PointViTPartDecoder(nn.Module):
     def __init__(self,
                  encoder_channel_list: List[int], 
                  decoder_layers: int = 2, 
-                 n_decoder_stages: int = 2,
-                 scale: int = 4,
+                 n_decoder_stages: int = 4, 
+                 scale: int = 2,
                  channel_scaling: int = 1,  
                  sampler: str = 'fps',
-                 global_feat=None, 
-                 progressive_input=False,
+                 globals=None, 
                  cls_map='pointnet2',
                  num_classes: int = 16,
                  **kwargs
                  ):
         super().__init__()
         self.decoder_layers = decoder_layers
-        if global_feat is not None:
-            self.global_feat = global_feat.split(',')
-            num_global_feat = len(self.global_feat)
+        if globals is not None:
+            self.globals = globals.split(',')
+            num_globals = len(self.globals)
         else:
-            self.global_feat = None
-            num_global_feat = 0 
+            num_globals = 0 
  
         self.in_channels = encoder_channel_list[-1]
         self.scale = scale
         self.n_decoder_stages = n_decoder_stages
-        
-        if progressive_input:
-            skip_dim = [self.in_channels//2**i for i in range(n_decoder_stages-1, 0, -1)]
-        else:
-            skip_dim = [0 for i in range(n_decoder_stages-1)]
-        skip_channels = [encoder_channel_list[0]] + skip_dim
+        skip_channels = [encoder_channel_list[0]] + [0] * (n_decoder_stages-1)
         
         fp_channels = [self.in_channels*channel_scaling]
         for _ in range(n_decoder_stages-1):
            fp_channels.insert(0, fp_channels[0] * channel_scaling) 
-
+        
         self.cls_map = cls_map
         self.num_classes = num_classes
         act_args = kwargs.get('act_args', {'act': 'relu'}) 
@@ -331,13 +320,13 @@ class PointViTPartDecoder(nn.Module):
             decoder[i] = self._make_dec(
                 skip_channels[i], fp_channels[i])
         self.decoder = nn.Sequential(*decoder)
-        self.out_channels = fp_channels[-n_decoder_stages] * (num_global_feat + 1)
+        self.out_channels = fp_channels[-n_decoder_stages] * (num_globals + 1)
 
         if sampler.lower() == 'fps':
             self.sample_fn = furthest_point_sample
         elif sampler.lower() == 'random':
             self.sample_fn = random_sample
-            
+        
     def _make_dec(self, skip_channels, fp_channels):
         layers = []
         mlp = [skip_channels + self.in_channels] + \
@@ -352,15 +341,17 @@ class PointViTPartDecoder(nn.Module):
             p (List(Tensor)): List of tensor for p, length 2, input p and center p
             f (List(Tensor)): List of tensor for feature maps, input features and out features
         """
-        if len(p) != (self.n_decoder_stages + 1):
-            for i in range(self.n_decoder_stages - 1): 
-                pos = p[i] 
-                idx = self.sample_fn(pos, pos.shape[1] // self.scale).long()
-                new_p = torch.gather(pos, 1, idx.unsqueeze(-1).expand(-1, -1, 3))
-                p.insert(1, new_p)
-                f.insert(1, None)
+        p_list = [p[0]]
+        f_list = [f[0]]
+        for i in range(self.n_decoder_stages - 1): 
+            pos = p_list[i] 
+            idx = self.sample_fn(pos, pos.shape[1] // self.scale).long()
+            new_p = torch.gather(pos, 1, idx.unsqueeze(-1).expand(-1, -1, 3))
+            p_list.append(new_p)
+            f_list.append(None)
+        p_list.append(p[-1])
         cls_token = f[-1][:, :, 0:1]
-        f[-1] = f[-1][:, :, 1:].contiguous()
+        f_list.append(f[-1][:, :, 1:].contiguous())
         
         B, N = p[0].shape[0:2]
         if self.cls_map == 'pointnet2':
@@ -369,18 +360,17 @@ class PointViTPartDecoder(nn.Module):
             cls_one_hot = self.convc(cls_one_hot)
              
         for i in range(-1, -len(self.decoder), -1):
-            f[i - 1] = self.decoder[i][1:](
-                [p[i], self.decoder[i][0]([p[i - 1], f[i - 1]], [p[i], f[i]])])[1]
-
-        i = -len(self.decoder) 
-        f[i - 1] = self.decoder[i][1:](
-                [p[i], self.decoder[i][0]([p[i - 1], torch.cat([cls_one_hot, f[i - 1]], 1)], [p[i], f[i]])])[1]
-
-        f_out = f[-len(self.decoder) - 1] 
+            f_list[i - 1] = self.decoder[i][1:](
+                [p_list[i-1], self.decoder[i][0]([p_list[i - 1], f_list[i - 1]], [p_list[i], f_list[i]])])[1]
         
-        if self.global_feat is not None:
+        i = -len(self.decoder) 
+        f_list[i - 1] = self.decoder[0][1:](
+            [p_list[i-1], self.decoder[0][0]([p_list[i-1], torch.cat([cls_one_hot, f_list[i-1]], 1)], [p_list[i], f_list[i]])])[1]
+        f_out = f_list[-len(self.decoder) - 1] 
+        
+        if self.globals is not None:
             global_feats = []
-            for token_type in self.global_feat:
+            for token_type in self.globals:
                 if 'cls' in token_type:
                     global_feats.append(cls_token)
                 elif 'max' in token_type:
