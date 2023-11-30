@@ -3,8 +3,8 @@ import pdal
 import json
 
 
-input_path="/Volumes/LHH-WD-1TB/data/PointView_implementation_test/" # input path to dir containing the point cloud files
-output_path="/Volumes/LHH-WD-1TB/data/PointView_implementation_test/processed2/" # output path to dir (will be created if not already) where the processed point cloud files will end up
+input_path="/home/lasse/data/Kalundborg_data/" # input path to dir containing the point cloud files
+output_path="/home/lasse/data/Kalundborg_data/processed/" # output path to dir (will be created if not already) where the processed point cloud files will end up
 
 # make sure output directory exists
 if not os.path.exists(output_path):
@@ -104,12 +104,49 @@ def pdal_pipeline_prepare_to_PointView_PLY2LAS(filename):
     ]
     return pipeline_dict
 
+def pdal_pipeline_prepare_opentrench3d(filename):
+    pipeline_dict = [
+        {
+            "type":"readers.ply",
+            "filename":input_path+filename
+        },
+        {
+            "type":"filters.voxelcenternearestneighbor",
+            "cell":0.004
+        },
+        {
+            "type": "filters.ferry",
+            "dimensions": "=>Classification"
+        },
+        {
+            "type":"filters.ferry",
+            "dimensions":"scalar_Classification => Classification"
+        },
+        {
+            "type":"filters.outlier",
+            "method":"statistical",
+            "mean_k":60,
+            "multiplier":2.2,
+            "class":7
+        },
+        {
+            "type":"filters.range",
+            "limits":"Classification![7:7]"
+        },
+        {
+            "type":"writers.ply",
+            "storage_mode":"big endian",
+            "filename":output_path+filename
+        }
+    ]
+    return pipeline_dict
+
 
 ### Loop point cloud files and execute PDAL Pipeline ###
 
 for pc_file in pc_files:
     print(f"{pc_file} is processing ...")
-    pipeline_json = json.dumps(pdal_pipeline_prepare_from_LAS(pc_file))
+    pipeline_json = json.dumps(pdal_pipeline_prepare_opentrench3d(pc_file))
     pipeline = pdal.Pipeline(pipeline_json)
     count = pipeline.execute()
     arrays = pipeline.arrays

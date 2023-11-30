@@ -3,7 +3,7 @@ dataset:
   common:
     NAME: Novafos3D
     data_root: data/OpenTrench3D/2-classes/test_fjernvarme
-    test_area: 8
+    test_area: 7
     voxel_size: 0.04 # 0.04 is to much. Start try with 0.01 0.015 0.02
   train:
     split: train
@@ -12,11 +12,11 @@ dataset:
     presample: False
   val:
     split: val
-    voxel_max: null
+    voxel_max: 100000
     presample: True 
   test:
     split: test
-    voxel_max: null
+    voxel_max: 100000
     presample: False 
 
 feature_keys: x,heights
