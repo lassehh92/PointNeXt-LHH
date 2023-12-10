@@ -43,8 +43,9 @@ def process_npy_files(input_folder, output_folder):
         print(f"Modified data saved to: {output_file}\n")
 
 # Example usage
-input_folder = '/home/lasse/Git/PointNeXt/data/OpenTrench3D/test_fjernvarme/raw'  # Replace with your actual input folder path
-output_folder = '/home/lasse/Git/PointNeXt/data/OpenTrench3D/2-classes/test_fjernvarme/raw'  # Replace with your actual output folder path
+input_folder="/home/lasse/data/Kalundborg_data/validated/Area_2/processed/npy-files/" # input path to dir containing the plyfiles
+output_folder="/home/lasse/data/Kalundborg_data/validated/Area_2/processed/npy-files/2-classes/"  # output path to dir (will be created if not already) where the npy files will end up
+
 
 # Uncomment the following line to run the function
 process_npy_files(input_folder, output_folder)
