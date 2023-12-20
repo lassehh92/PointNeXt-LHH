@@ -2,8 +2,8 @@ import os
 import numpy as np
 from pyntcloud import PyntCloud
 
-input_path="/home/lasse/data/Kalundborg_data/validated/Area_2/processed/" # input path to dir containing the plyfiles
-output_path="/home/lasse/data/Kalundborg_data/validated/Area_2/processed/npy-files/"  # output path to dir (will be created if not already) where the npy files will end up
+input_path="/home/lasse/data/Kalundborg_data/validated/Area_1/temp/processed/" # input path to dir containing the plyfiles
+output_path="/home/lasse/data/Kalundborg_data/validated/Area_1/temp/processed/npy-files/"  # output path to dir (will be created if not already) where the npy files will end up
 
 # make sure output directory exists
 if not os.path.exists(output_path):

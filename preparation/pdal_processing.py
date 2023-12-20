@@ -3,8 +3,8 @@ import pdal
 import json
 
 
-input_path="/home/lasse/data/Kalundborg_data/validated/Area_2/" # input path to dir containing the point cloud files
-output_path="/home/lasse/data/Kalundborg_data/validated/Area_2/processed/" # output path to dir (will be created if not already) where the processed point cloud files will end up
+input_path="/home/lasse/data/Kalundborg_data/validated/Area_1/temp/" # input path to dir containing the point cloud files
+output_path="/home/lasse/data/Kalundborg_data/validated/Area_1/processed/" # output path to dir (will be created if not already) where the processed point cloud files will end up
 
 # make sure output directory exists
 if not os.path.exists(output_path):
